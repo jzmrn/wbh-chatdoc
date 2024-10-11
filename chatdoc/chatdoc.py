@@ -62,6 +62,7 @@ def unauth_view() -> rx.Component:
                         text_align="left",
                         width="100%",
                     ),
+                    rx.text("Use your corporate account to sign in."),
                     direction="column",
                     justify="start",
                     spacing="4",
@@ -82,6 +83,7 @@ def unauth_view() -> rx.Component:
             max_width="28em",
             width="100%",
         ),
+        height="100vh",
         align="center",
         justify="center",
     )

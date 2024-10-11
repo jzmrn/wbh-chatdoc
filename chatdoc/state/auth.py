@@ -64,7 +64,9 @@ class SsoState(rx.State):
 
     def logout(self):
         self._token = {}
-        return rx.redirect(authority + "/oauth2/v2.0/logout")
+        # This will logout the user from the SSO provider
+        # return rx.redirect(authority + "/oauth2/v2.0/logout")
+        return rx.redirect(self.router.page.host)
 
     def callback(self):
         query_components = self.router.page.params

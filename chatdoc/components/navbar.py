@@ -1,5 +1,5 @@
+from chatdoc.state import SsoState, State
 import reflex as rx
-from chatdoc.state import State
 
 
 def sidebar_chat(chat: str) -> rx.Component:
@@ -103,6 +103,14 @@ def navbar():
                         ),
                         background_color=rx.color("mauve", 6),
                     )
+                ),
+                rx.button(
+                    rx.icon(
+                        tag="log-out",
+                        color=rx.color("mauve", 12),
+                    ),
+                    on_click=SsoState.logout,
+                    background_color=rx.color("mauve", 6),
                 ),
                 align_items="center",
             ),
