@@ -1,79 +1,6 @@
-from chatdoc.state import SsoState, State
 import reflex as rx
 
-
-def sidebar_chat(chat: str) -> rx.Component:
-    return rx.drawer.close(
-        rx.hstack(
-            rx.button(
-                chat,
-                on_click=lambda: State.set_chat(chat),
-                width="80%",
-                variant="surface",
-            ),
-            rx.button(
-                rx.icon(
-                    tag="trash",
-                    on_click=State.delete_chat,
-                    stroke_width=1,
-                ),
-                width="20%",
-                variant="surface",
-                color_scheme="red",
-            ),
-            width="100%",
-        )
-    )
-
-
-def sidebar(trigger) -> rx.Component:
-    return rx.drawer.root(
-        rx.drawer.trigger(trigger),
-        rx.drawer.overlay(),
-        rx.drawer.portal(
-            rx.drawer.content(
-                rx.vstack(
-                    rx.heading("Chats", color=rx.color("mauve", 11)),
-                    rx.divider(),
-                    rx.foreach(State.chat_titles, lambda chat: sidebar_chat(chat)),
-                    align_items="stretch",
-                    width="100%",
-                ),
-                top="auto",
-                right="auto",
-                height="100%",
-                width="20em",
-                padding="2em",
-                background_color=rx.color("mauve", 2),
-                outline="none",
-            )
-        ),
-        direction="left",
-    )
-
-
-def modal(trigger) -> rx.Component:
-    return rx.dialog.root(
-        rx.dialog.trigger(trigger),
-        rx.dialog.content(
-            rx.hstack(
-                rx.input(
-                    placeholder="Type something...",
-                    on_blur=State.set_new_chat_name,
-                    width=["15em", "20em", "30em", "30em", "30em", "30em"],
-                ),
-                rx.dialog.close(
-                    rx.button(
-                        "Create chat",
-                        on_click=State.create_chat,
-                    ),
-                ),
-                background_color=rx.color("mauve", 1),
-                spacing="2",
-                width="100%",
-            ),
-        ),
-    )
+from chatdoc.state import SsoState, State
 
 
 def navbar_link(text: str, url: str) -> rx.Component:
@@ -95,34 +22,17 @@ def navbar():
         rx.hstack(
             rx.hstack(
                 rx.heading("chatdoc."),
-                rx.hstack(
-                    navbar_icons_item("Chat", "messages-square", "/chat"),
-                    navbar_icons_item("Docs", "file-text", "/docs"),
-                    spacing="5",
-                ),
-                rx.desktop_only(
-                    rx.badge(
-                        State.current_chat,
-                        rx.tooltip(
-                            rx.icon("info", size=14),
-                            content="The current selected chat.",
-                        ),
-                        variant="soft",
-                    )
-                ),
                 align_items="center",
+                height="100%",
             ),
             rx.hstack(
-                modal(rx.button("+ New chat")),
-                sidebar(
-                    rx.button(
-                        rx.icon(
-                            tag="messages-square",
-                            color=rx.color("mauve", 12),
-                        ),
-                        background_color=rx.color("mauve", 6),
-                    )
-                ),
+                navbar_icons_item("Chat", "messages-square", "/chat"),
+                navbar_icons_item("Docs", "file-text", "/docs"),
+                spacing="5",
+                align_items="center",
+                height="100%",
+            ),
+            rx.hstack(
                 rx.button(
                     rx.icon(
                         tag="log-out",

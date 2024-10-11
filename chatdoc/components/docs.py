@@ -1,7 +1,7 @@
 import reflex as rx
 
+from .common import content, header
 from .navbar import navbar
-from .common import content
 
 
 class UploadExample(rx.State):
@@ -61,6 +61,7 @@ def upload_form():
 def docs_view() -> rx.Component:
     return rx.vstack(
         navbar(),
+        header(rx.heading("Docs")),
         content(
             upload_form(),
         ),
