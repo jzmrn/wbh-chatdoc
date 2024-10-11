@@ -76,11 +76,30 @@ def modal(trigger) -> rx.Component:
     )
 
 
+def navbar_link(text: str, url: str) -> rx.Component:
+    return rx.link(rx.text(text, size="4", weight="medium"), href=url)
+
+
+def navbar_icons_item(text: str, icon: str, url: str) -> rx.Component:
+    return rx.link(
+        rx.hstack(
+            rx.icon(icon),
+            rx.text(text, size="4", weight="medium"),
+        ),
+        href=url,
+    )
+
+
 def navbar():
     return rx.box(
         rx.hstack(
             rx.hstack(
                 rx.heading("chatdoc."),
+                rx.hstack(
+                    navbar_icons_item("Chat", "messages-square", "/chat"),
+                    navbar_icons_item("Docs", "file-text", "/docs"),
+                    spacing="5",
+                ),
                 rx.desktop_only(
                     rx.badge(
                         State.current_chat,

@@ -1,7 +1,7 @@
 """The main Chat app."""
 
 import reflex as rx
-from chatdoc.components import chat, navbar
+from chatdoc.components import chat_view, docs_view
 from chatdoc.state import SsoState
 
 
@@ -15,9 +15,14 @@ def logout() -> rx.Component:
     return rx.container("Logged out")
 
 
-@rx.page(route="/home", on_load=SsoState.require_auth)
-def home() -> rx.Component:
-    return auth_view()
+@rx.page(route="/chat", on_load=SsoState.require_auth)
+def chat() -> rx.Component:
+    return chat_view()
+
+
+@rx.page(route="/docs", on_load=SsoState.require_auth)
+def docs() -> rx.Component:
+    return docs_view()
 
 
 @rx.page(route="/login", on_load=SsoState.redirect_sso)
@@ -27,20 +32,7 @@ def login() -> rx.Component:
 
 @rx.page(route="/")
 def main() -> rx.Component:
-    return rx.cond(SsoState.check_auth, auth_view(), unauth_view())
-
-
-def auth_view() -> rx.Component:
-    return rx.chakra.vstack(
-        navbar(),
-        chat.chat(),
-        chat.action_bar(),
-        background_color=rx.color("mauve", 1),
-        color=rx.color("mauve", 12),
-        min_height="100vh",
-        align_items="stretch",
-        spacing="0",
-    )
+    return rx.cond(SsoState.check_auth, chat_view(), unauth_view())
 
 
 def unauth_view() -> rx.Component:

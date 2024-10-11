@@ -1,7 +1,9 @@
+from chatdoc.components.common import content
 import reflex as rx
 
 from chatdoc.state import QA, State
-from chatdoc.components import loading_icon
+from .loading import loading_icon
+from .navbar import navbar
 
 message_style = dict(
     display="inline-block",
@@ -47,16 +49,8 @@ def message(qa: QA) -> rx.Component:
 
 def chat() -> rx.Component:
     """List all the messages in a single conversation."""
-    return rx.vstack(
+    return content(
         rx.box(rx.foreach(State.chats[State.current_chat], message), width="100%"),
-        py="8",
-        flex="1",
-        width="100%",
-        max_width="50em",
-        padding_x="4px",
-        align_self="center",
-        overflow="hidden",
-        padding_bottom="5em",
     )
 
 
@@ -64,7 +58,7 @@ def action_bar() -> rx.Component:
     """The action bar to send a new message."""
     return rx.center(
         rx.vstack(
-            rx.chakra.form(
+            rx.form(
                 rx.chakra.form_control(
                     rx.hstack(
                         rx.input(
@@ -105,4 +99,17 @@ def action_bar() -> rx.Component:
         background_color=rx.color("mauve", 2),
         align_items="stretch",
         width="100%",
+    )
+
+
+def chat_view() -> rx.Component:
+    return rx.vstack(
+        navbar(),
+        chat(),
+        action_bar(),
+        background_color=rx.color("mauve", 1),
+        color=rx.color("mauve", 12),
+        min_height="100vh",
+        align_items="stretch",
+        spacing="0",
     )

@@ -20,7 +20,7 @@ client_id: str = os.environ.get(ENV_VAR_CLIENT_ID)
 client_secret: str = os.environ.get(ENV_VAR_CLIENT_SECRET)
 tenant_id: str = os.environ.get(ENV_VAR_TENANT_ID)
 authority = f"https://login.microsoftonline.com/{tenant_id}"
-login_redirect = "/home"
+login_redirect = "/chat"
 cache = msal.TokenCache()
 
 sso_app: msal.ClientApplication

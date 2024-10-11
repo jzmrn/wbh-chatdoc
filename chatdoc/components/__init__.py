@@ -1,2 +1,2 @@
-from .loading import loading_icon as loading_icon
-from .navbar import navbar as navbar
+from .docs import docs_view as docs_view
+from .chat import chat_view as chat_view
