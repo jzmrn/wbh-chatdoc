@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "chatdoc"
+version = "0.1.0"
+description = "Chatbot using RAG architecture to answer document related questions"
+authors = ["Jan Zimmermann <jzmrn@gmx.de>"]
+readme = "README.md"
+
+package-mode = false 
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.9.2"
+asyncio = "^3.4.3"
+msal = "^1.31.0"
+reflex = "^0.6.2.post1"
+openai = "^1.51.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
