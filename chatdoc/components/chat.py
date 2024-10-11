@@ -1,8 +1,7 @@
 import reflex as rx
 
-from chatdoc.components import loading_icon
 from chatdoc.state import QA, State
-
+from chatdoc.components import loading_icon
 
 message_style = dict(
     display="inline-block",

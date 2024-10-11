@@ -1,6 +1,6 @@
 import msal
 import reflex as rx
-from typing import Dict, List, Optional
+from typing import Dict
 import os
 
 ENV_VAR_CLIENT_ID = "AZURE_CLIENT_ID"
@@ -80,9 +80,9 @@ class SsoState(rx.State):
             result = sso_app.acquire_token_by_auth_code_flow(
                 self._flow, auth_response, scopes=[]
             )
-        except Exception as e:
-            return rx.toast(f"error something went wrong")
-        # this can be used for accessing graph
+        except Exception:
+            return rx.toast("error something went wrong")
+
         self._access_token = result.get("access_token")
         self._token = result.get("id_token_claims")
         return rx.redirect(login_redirect)
