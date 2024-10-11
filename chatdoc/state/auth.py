@@ -1,7 +1,8 @@
+import os
+from typing import Dict
+
 import msal
 import reflex as rx
-from typing import Dict
-import os
 
 ENV_VAR_CLIENT_ID = "AZURE_CLIENT_ID"
 ENV_VAR_CLIENT_SECRET = "AZURE_CLIENT_SECRET"

@@ -1,6 +1,7 @@
 """The main Chat app."""
 
 import reflex as rx
+
 from chatdoc.components import chat_view, docs_view
 from chatdoc.state import SsoState
 

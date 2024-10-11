@@ -1,7 +1,7 @@
 import os
+
 import reflex as rx
 from openai import OpenAI
-
 
 # Checking if the API key is set properly
 if not os.getenv("OPENAI_API_KEY"):
