@@ -33,6 +33,10 @@ def navbar():
                 height="100%",
             ),
             rx.hstack(
+                rx.badge(
+                    SsoState.user_name,
+                    variant="soft",
+                ),
                 rx.button(
                     rx.icon(
                         tag="log-out",

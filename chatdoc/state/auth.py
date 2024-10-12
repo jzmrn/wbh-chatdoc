@@ -63,6 +63,10 @@ class SsoState(rx.State):
     def token(self) -> Dict[str, str]:
         return self._token
 
+    @rx.var(cache=True)
+    def user_name(self):
+        return self._token.get("name")
+
     def logout(self):
         self._token = {}
         # This will logout the user from the SSO provider
