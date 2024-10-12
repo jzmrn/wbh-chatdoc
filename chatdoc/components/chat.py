@@ -1,4 +1,5 @@
 import reflex as rx
+import reflex_chakra as rc
 
 from chatdoc.components.common import content, header
 from chatdoc.state import QA, State
@@ -134,7 +135,7 @@ def action_bar() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.form(
-                rx.chakra.form_control(
+                rc.form_control(
                     rx.hstack(
                         rx.input(
                             rx.input.slot(

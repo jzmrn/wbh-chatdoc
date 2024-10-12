@@ -1,39 +1,10 @@
-import os
-
 import reflex as rx
+
+from chatdoc.constants import UPLOAD_ID
+from chatdoc.state import State
 
 from .common import content, header
 from .navbar import navbar
-
-UPLOAD_ID = "upload"
-
-
-class UploadHandler(rx.State):
-    uploading: bool = False
-    progress: int = 0
-
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        self.progress = 0
-
-        # TODO: avoid collisions and delete temporary files
-        folder = "tmp"
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-
-        for file in files:
-            print(f"Processing {file.filename}")
-            with open(f"./{folder}/{file.filename}", "wb") as f:
-                f.write(await file.read())
-
-    def handle_upload_progress(self, progress: dict):
-        self.uploading = True
-        self.progress = round(progress["progress"] * 100)
-        if self.progress >= 100:
-            self.uploading = False
-
-    def cancel_upload(self):
-        self.uploading = False
-        return rx.cancel_upload(UPLOAD_ID)
 
 
 def upload_form():
@@ -52,16 +23,16 @@ def upload_form():
         rx.heading("Selected files:"),
         rx.vstack(rx.foreach(rx.selected_files(UPLOAD_ID), rx.text)),
         rx.divider(),
-        rx.progress(value=UploadHandler.progress, max=100),
+        rx.progress(value=State.progress, max=100),
         rx.button(
             "Upload",
-            on_click=UploadHandler.handle_upload(
+            on_click=State.handle_upload(
                 rx.upload_files(
                     upload_id=UPLOAD_ID,
-                    on_upload_progress=UploadHandler.handle_upload_progress,
+                    on_upload_progress=State.handle_upload_progress,
                 ),
             ),
-            disabled=UploadHandler.uploading,
+            disabled=State.uploading,
         ),
         align_self="center",
     )
