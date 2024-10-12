@@ -34,9 +34,7 @@ class QA(rx.Base):
     answer: str
 
 
-DEFAULT_CHATS = {
-    "Intros": [],
-}
+DEFAULT_CHATS = {"Intros": []}
 
 
 class State(rx.State):
@@ -171,10 +169,7 @@ class State(rx.State):
         question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
         return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
-    async def openai_process_question_rag(
-        self,
-        question: str,
-    ):
+    async def openai_process_question_rag(self, question: str):
         # result = self.chain().stream({"question": question})
         # response = result["answer"]
         # st.session_state.messages.append({"role": "assistant", "content": response})
@@ -229,7 +224,9 @@ class State(rx.State):
     # Upload #
     ##########
 
+    # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
+        self.uploading = True
         self.progress = 0
 
         folder = "tmp"
@@ -242,25 +239,32 @@ class State(rx.State):
             with open(f"./{folder}/{file.filename}", "wb") as f:
                 f.write(await file.read())
 
+        self.progress = 40
+        yield
+
         TMP_DIR = Path("./tmp")
         loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
         documents = loader.load()
+        self.progress = 60
+        yield
 
-        print(f"Loaded {len(documents)} documents.")
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        self.progress = 70
+        yield
 
-        print("Splitting documents...")
         chunks = text_splitter.split_documents(documents)
+        self.progress = 80
+        yield
 
-        print("Adding chunks to Pinecone...")
-        ids = self.vectordb.add_documents(chunks)
-        print("Added documents with IDs:", ids)
+        self.vectordb.add_documents(chunks)
 
+        self.progress = 100
+        self.uploading = False
+
+    # Upload itself is only the first step of the process (20%)
     def handle_upload_progress(self, progress: dict):
-        self.uploading = True
-        self.progress = round(progress["progress"] * 100)
-        if self.progress >= 100:
-            self.uploading = False
+        if self.progress < 100:
+            self.progress = round(progress["progress"] * 20)
 
     def cancel_upload(self):
         self.uploading = False
