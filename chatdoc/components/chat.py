@@ -2,14 +2,14 @@ import reflex as rx
 import reflex_chakra as rc
 
 from chatdoc.components.common import content, header
-from chatdoc.state import QA, State
+from chatdoc.state import QA, Document, State
 
 from .loading import loading_icon
 from .navbar import navbar
 
 message_style = dict(
     display="inline-block",
-    padding="1em",
+    padding_x="1em",
     border_radius="8px",
     max_width=["30em", "30em", "50em", "50em", "50em", "50em"],
 )
@@ -110,16 +110,32 @@ def message(qa: QA) -> rx.Component:
             margin_top="1em",
         ),
         rx.box(
-            rx.markdown(
-                qa.answer,
-                background_color=rx.color("accent", 4),
-                color=rx.color("accent", 12),
-                **message_style,
+            rx.vstack(
+                rx.markdown(
+                    qa.answer,
+                ),
+                rx.foreach(qa.context, display_ref),
+                padding_bottom="1em",
             ),
+            background_color=rx.color("accent", 4),
+            color=rx.color("accent", 12),
             text_align="left",
-            padding_top="1em",
+            **message_style,
         ),
         width="100%",
+    )
+
+
+def display_ref(docx: Document) -> rx.Component:
+    return rx.hover_card.root(
+        rx.hover_card.trigger(
+            rx.link(
+                docx.metadata["source"],
+                color_scheme="blue",
+                underline="always",
+            ),
+        ),
+        rx.hover_card.content(rx.text(docx.page_content)),
     )
 
 

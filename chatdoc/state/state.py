@@ -11,7 +11,6 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
@@ -27,11 +26,20 @@ if "OPENAI_API_KEY" not in os.environ:
     raise ValueError("OPENAI_API_KEY is not set.")
 
 
+class Document(rx.Base):
+    """A document with metadata."""
+
+    id: str
+    page_content: str
+    metadata: dict[str, str]
+
+
 class QA(rx.Base):
     """A question and answer pair."""
 
     question: str
     answer: str
+    context: list[Document]
 
 
 DEFAULT_CHATS = {"Intros": []}
@@ -184,7 +192,7 @@ class State(rx.State):
         #         st.caption(doc.page_content)
 
         # Add the question to the list of questions.
-        qa = QA(question=question, answer="")
+        qa = QA(question=question, answer="", context=[])
         self.chats[self.current_chat].append(qa)
 
         # Clear the input and start the processing.
@@ -200,11 +208,15 @@ class State(rx.State):
         # Remove the last mock answer.
         messages = messages[:-1]
 
-        session = self.chain.stream({"input": question, "chat_history": messages})
-        for item in session:
+        for item in self.chain.stream({"input": question, "chat_history": messages}):
+            if "context" in item and (ctx := item["context"]) is not None:
+                self.chats[self.current_chat][-1].context = [
+                    Document(id=d.id, page_content=d.page_content, metadata=d.metadata)
+                    for d in ctx
+                ]
             if "answer" in item and (delta := item["answer"]) is not None:
                 self.chats[self.current_chat][-1].answer += delta
-                yield
+            yield
 
         # Toggle the processing flag.
         self.processing = False
