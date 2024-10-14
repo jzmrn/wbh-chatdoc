@@ -20,6 +20,7 @@ if not os.getenv(ENV_VAR_TENANT_ID):
 client_id: str = os.environ.get(ENV_VAR_CLIENT_ID)
 client_secret: str = os.environ.get(ENV_VAR_CLIENT_SECRET)
 tenant_id: str = os.environ.get(ENV_VAR_TENANT_ID)
+
 authority = f"https://login.microsoftonline.com/{tenant_id}"
 login_redirect = "/chat"
 cache = msal.TokenCache()
@@ -64,8 +65,21 @@ class SsoState(rx.State):
         return self._token
 
     @rx.var(cache=True)
-    def user_name(self):
+    def user_name(self) -> str:
         return self._token.get("name")
+
+    @rx.var(cache=True)
+    def preferred_username(self) -> str:
+        return self._token.get("preferred_username")
+
+    @rx.var(cache=True)
+    def user_roles(self) -> list[str]:
+        # TODO: do not hardcode but mock user roles
+        return [self.user_role, "MyRole1", "public"]
+
+    @rx.var(cache=True)
+    def user_role(self) -> str:
+        return self.preferred_username
 
     def logout(self):
         self._token = {}

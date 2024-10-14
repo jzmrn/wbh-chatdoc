@@ -8,6 +8,7 @@ from langchain.chains import (
     create_retrieval_chain,
 )
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.schema.document import Document as DocEntry
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.embeddings import OpenAIEmbeddings
@@ -50,6 +51,8 @@ class State(rx.State):
 
     uploading: bool = False
     progress: int = 0
+
+    upload_role: str = "user"
 
     # A dict from the chat name to the list of questions and answers.
     chats: dict[str, list[QA]] = DEFAULT_CHATS
@@ -151,7 +154,11 @@ class State(rx.State):
             ]
         )
         history_aware_retriever = create_history_aware_retriever(
-            llm, self.vectordb.as_retriever(), contextualize_q_prompt
+            llm,
+            self.vectordb.as_retriever(
+                # search_kwargs={"filter": {"role": "file"}},
+            ),
+            contextualize_q_prompt,
         )
 
         # Answer question
@@ -236,6 +243,9 @@ class State(rx.State):
     # Upload #
     ##########
 
+    def set_upload_role(self, data: str):
+        self.upload_role = data
+
     # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
@@ -256,7 +266,16 @@ class State(rx.State):
 
         TMP_DIR = Path("./tmp")
         loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
-        documents = loader.load()
+        self.progress = 50
+        yield
+
+        documents = [
+            DocEntry(
+                page_content=doc.page_content,
+                metadata={**doc.metadata, "role": self.upload_role},
+            )
+            for doc in loader.load()
+        ]
         self.progress = 60
         yield
 
