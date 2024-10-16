@@ -89,11 +89,19 @@ def message(qa: QA) -> rx.Component:
         ),
         rx.box(
             rx.vstack(
-                rx.markdown(
-                    qa.answer,
+                rx.cond(
+                    qa.answer == "",
+                    rx.image(
+                        src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
+                        width="2em",
+                        margin="1em",
+                    ),
+                    rx.vstack(
+                        rx.markdown(qa.answer),
+                        rx.foreach(qa.context, display_ref),
+                        padding_bottom="1em",
+                    ),
                 ),
-                rx.foreach(qa.context, display_ref),
-                padding_bottom="1em",
             ),
             background_color=rx.color("accent", 4),
             color=rx.color("accent", 12),
