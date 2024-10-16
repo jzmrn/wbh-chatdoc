@@ -1,6 +1,7 @@
 import reflex as rx
+from reflex.style import toggle_color_mode
 
-from chatdoc.state import SsoState, State
+from chatdoc.state import SsoState
 
 
 def navbar_link(text: str, url: str) -> rx.Component:
@@ -36,6 +37,14 @@ def navbar():
                 rx.badge(
                     SsoState.user_name,
                     variant="soft",
+                ),
+                rx.button(
+                    rx.icon(
+                        tag="sun-moon",
+                        color=rx.color("mauve", 12),
+                    ),
+                    background_color=rx.color("mauve", 6),
+                    on_click=toggle_color_mode,
                 ),
                 rx.button(
                     rx.icon(
