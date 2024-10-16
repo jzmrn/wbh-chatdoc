@@ -20,16 +20,19 @@ def header(title: str, *items: rx.Component) -> rx.Component:
     return rx.box(
         rx.card(
             rx.hstack(
-                rx.heading(title),
-                rx.hstack(
-                    *items,
+                rx.heading(
+                    title,
+                    text_overflow="ellipsis",
+                    overflow="hidden",
+                    white_space="nowrap",
+                    max_width="70%",
                 ),
+                rx.hstack(*items),
                 justify_content="space-between",
             ),
-            height="4em",
         ),
-        position="sticky",
-        top="4em",
+        position="fixed",
+        top="5em",
         width="100%",
         max_width="50em",
         align_self="center",

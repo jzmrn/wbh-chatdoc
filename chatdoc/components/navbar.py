@@ -55,8 +55,10 @@ def navbar():
         padding="12px",
         border_bottom=f"1px solid {rx.color('mauve', 3)}",
         background_color=rx.color("mauve", 2),
-        position="sticky",
+        position="fixed",
         top="0",
+        height="4em",
         z_index="100",
+        width="100%",
         align_items="center",
     )
