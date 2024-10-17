@@ -69,6 +69,10 @@ class SsoState(rx.State):
         return self._token.get("name")
 
     @rx.var(cache=True)
+    def preferred_username(self) -> str:
+        return self._token.get("preferred_username")
+
+    @rx.var(cache=True)
     def user_roles(self) -> list[str]:
         # TODO: do not hardcode but mock user roles
         return ["Privat", "Support", "chatdoc", "Public"]

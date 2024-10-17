@@ -15,10 +15,11 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
 
 from chatdoc.constants import UPLOAD_ID
+
+from .auth import SsoState
 
 if "PINECONE_API_KEY" not in os.environ:
     raise ValueError("PINECONE_API_KEY is not set.")
@@ -27,7 +28,7 @@ if "OPENAI_API_KEY" not in os.environ:
     raise ValueError("OPENAI_API_KEY is not set.")
 
 
-class Document(rx.Base):
+class Chunk(rx.Base):
     """A document with metadata."""
 
     id: str
@@ -35,12 +36,20 @@ class Document(rx.Base):
     metadata: dict[str, str]
 
 
+class Document(rx.Base):
+    """A document with metadata."""
+
+    id: str
+    name: str
+    role: str
+
+
 class QA(rx.Base):
     """A question and answer pair."""
 
     question: str
     answer: str
-    context: list[Document]
+    context: list[Chunk]
 
 
 DEFAULT_CHATS = {"Intros": []}
@@ -62,6 +71,15 @@ class State(rx.State):
 
     # The name of the new chat.
     new_chat_name: str = ""
+
+    # Documents owned by the user
+    documents: list[Document] = [
+        Document(id="1", role="j.zimmermann", name="j.zimmermann - 2022.pdf"),
+        Document(id="2", role="Public", name="Public - 2022.pdf"),
+        Document(id="3", role="chatdoc", name="chatdoc - 2022.pdf"),
+        Document(id="4", role="user", name="user - 2022.pdf"),
+        Document(id="5", role="user", name="user - 2022- final.pdf"),
+    ]
 
     # The current question.
     question: str
@@ -218,7 +236,7 @@ class State(rx.State):
         for item in self.chain.stream({"input": question, "chat_history": messages}):
             if "context" in item and (ctx := item["context"]) is not None:
                 self.chats[self.current_chat][-1].context = [
-                    Document(id=d.id, page_content=d.page_content, metadata=d.metadata)
+                    Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
                     for d in ctx
                 ]
             if "answer" in item and (delta := item["answer"]) is not None:
@@ -269,10 +287,16 @@ class State(rx.State):
         self.progress = 50
         yield
 
+        role = (
+            self.upload_role
+            if self.upload_role != "Privat"
+            else SsoState.preferred_username
+        )
+
         documents = [
             DocEntry(
                 page_content=doc.page_content,
-                metadata={**doc.metadata, "role": self.upload_role},
+                metadata={**doc.metadata, "role": role},
             )
             for doc in loader.load()
         ]
