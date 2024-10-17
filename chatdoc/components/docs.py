@@ -38,7 +38,7 @@ def upload_form():
                         rx.hstack(
                             rx.select(
                                 SsoState.user_roles,
-                                default_value=SsoState.preferred_username,
+                                default_value="Privat",
                                 on_change=State.set_upload_role,
                                 disabled=State.uploading,
                             ),
