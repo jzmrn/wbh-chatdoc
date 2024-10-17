@@ -9,7 +9,7 @@ def content(*items: rx.Component) -> rx.Component:
         width="100%",
         max_width="50em",
         padding_x="4px",
-        padding_top="8em",
+        padding_top="10em",
         align_self="center",
         overflow="hidden",
         padding_bottom="5em",
