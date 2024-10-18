@@ -15,6 +15,7 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
+from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
 
 from chatdoc.constants import UPLOAD_ID
@@ -150,9 +151,8 @@ class State(rx.State):
     @rx.var
     def chain(self) -> ConversationalRetrievalChain:
         llm = ChatOpenAI(
-            model_name="gpt-4o-mini",
+            model_name="gpt-3.5-turbo",
             temperature=0,
-            # streaming=True,
             api_key=os.environ["OPENAI_API_KEY"],
         )
 
@@ -174,7 +174,10 @@ class State(rx.State):
         history_aware_retriever = create_history_aware_retriever(
             llm,
             self.vectordb.as_retriever(
-                # search_kwargs={"filter": {"role": "file"}},
+                search_kwargs={
+                    "k": 2,
+                    # "filter": {"role": "file"},
+                },
             ),
             contextualize_q_prompt,
         )
@@ -202,19 +205,13 @@ class State(rx.State):
         question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
         return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
-    async def openai_process_question_rag(self, question: str):
-        # result = self.chain().stream({"question": question})
-        # response = result["answer"]
-        # st.session_state.messages.append({"role": "assistant", "content": response})
-        # utils.print_qa(CustomDocChatbot, user_query, response)
+    def process_question(self, form_data: dict[str, str]):
+        # Get the question from the form
+        question = form_data["question"]
 
-        # # to show references
-        # for idx, doc in enumerate(result["source_documents"], 1):
-        #     filename = os.path.basename(doc.metadata["source"])
-        #     page_num = doc.metadata["page"]
-        #     ref_title = f":blue[Reference {idx}: *{filename} - page.{page_num}*]"
-        #     with st.popover(ref_title):
-        #         st.caption(doc.page_content)
+        # Check if the question is empty
+        if question == "":
+            return
 
         # Add the question to the list of questions.
         qa = QA(question=question, answer="", context=[])
@@ -234,28 +231,22 @@ class State(rx.State):
         messages = messages[:-1]
 
         for item in self.chain.stream({"input": question, "chat_history": messages}):
-            if "context" in item and (ctx := item["context"]) is not None:
-                self.chats[self.current_chat][-1].context = [
-                    Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
-                    for d in ctx
-                ]
-            if "answer" in item and (delta := item["answer"]) is not None:
-                self.chats[self.current_chat][-1].answer += delta
-            yield
+            answer = item.get("answer", "")
+            self.chats[self.current_chat][-1].answer += answer
+            # yield
+
+            context = item.get("context")
+            if not context:
+                continue
+
+            self.chats[self.current_chat][-1].context = [
+                Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
+                for d in context
+            ]
+            #     yield
 
         # Toggle the processing flag.
         self.processing = False
-
-    async def process_question(self, form_data: dict[str, str]):
-        # Get the question from the form
-        question = form_data["question"]
-
-        # Check if the question is empty
-        if question == "":
-            return
-
-        async for value in self.openai_process_question_rag(question):
-            yield value
 
     ##########
     # Upload #
