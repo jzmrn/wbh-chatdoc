@@ -66,48 +66,35 @@ def list_docs() -> rx.Component:
     return rx.vstack(
         rx.heading("Documents"),
         rx.box(
-            rx.grid(
+            rx.vstack(
                 rx.foreach(
                     State.documents,
                     lambda doc: rx.card(
-                        rx.data_list.root(
-                            rx.data_list.item(
-                                rx.data_list.label("ID"),
-                                rx.data_list.value(doc.id),
-                            ),
-                            rx.data_list.item(
-                                rx.data_list.label("Name"),
-                                rx.data_list.value(
-                                    rx.badge(
-                                        doc.name,
-                                        variant="soft",
-                                        radius="full",
-                                    )
+                        rx.hstack(
+                            rx.text(doc.name, weight="bold"),
+                            rx.hstack(
+                                rx.badge(
+                                    doc.role,
+                                    variant="soft",
+                                    radius="full",
+                                ),
+                                rx.button(
+                                    rx.icon(
+                                        tag="trash",
+                                        color=rx.color("mauve", 12),
+                                    ),
+                                    background_color=rx.color("mauve", 6),
+                                    size="1",
+                                    on_click=lambda: State.delete_document(doc.id),
                                 ),
                             ),
-                            rx.data_list.item(
-                                rx.data_list.label("Role"),
-                                rx.data_list.value(doc.role),
-                            ),
-                            rx.data_list.item(
-                                rx.data_list.label("Options"),
-                                rx.data_list.value(
-                                    rx.button(
-                                        rx.icon(
-                                            tag="trash",
-                                            color=rx.color("mauve", 12),
-                                        ),
-                                        background_color=rx.color("mauve", 6),
-                                        size="1",
-                                        on_click=lambda: State.delete_document(doc.id),
-                                    )
-                                ),
-                            ),
+                            width="100%",
+                            justify="between",
                         ),
+                        width="100%",
                     ),
                 ),
-                columns="2",
-                spacing="4",
+                width="100%",
             ),
             width="100%",
         ),
@@ -119,7 +106,7 @@ def docs_view() -> rx.Component:
     return rx.vstack(
         navbar(),
         header(rx.heading("Docs")),
-        content(upload_form(), rx.divider(margin="2em"), list_docs()),
+        content(upload_form(), rx.divider(margin_y="2em"), list_docs()),
         background_color=rx.color("mauve", 1),
         color=rx.color("mauve", 12),
         min_height="100vh",
