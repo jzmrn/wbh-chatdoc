@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import psycopg2
 import reflex as rx
 from langchain.chains import (
     ConversationalRetrievalChain,
@@ -15,8 +16,8 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
+from psycopg2 import sql
 
 from chatdoc.constants import UPLOAD_ID
 
@@ -40,9 +41,70 @@ class Chunk(rx.Base):
 class Document(rx.Base):
     """A document with metadata."""
 
-    id: str
+    id: str | None
     name: str
     role: str
+
+
+class DatabaseHandler:
+    def __init__(self, dbname: str, user: str, password: str, host: str, port: str):
+        self.conn = psycopg2.connect(
+            dbname=dbname, user=user, password=password, host=host, port=port
+        )
+        self.ensure_table_exists()
+
+    def ensure_table_exists(self):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    role VARCHAR(255) NOT NULL
+                )
+                """
+            )
+            self.conn.commit()
+
+    def store_document(self, document: Document) -> int:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO documents (name, role)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                (document.name, document.role),
+            )
+            document_id = cur.fetchone()[0]
+            self.conn.commit()
+            return document_id
+
+    def get_documents_by_roles(self, roles: list[str]) -> list[Document]:
+        with self.conn.cursor() as cur:
+            query = sql.SQL(
+                """
+                SELECT id, name, role
+                FROM documents
+                WHERE role IN (%s)
+                """
+            )
+            cur.execute(query, (roles))
+            rows = cur.fetchall()
+            return [Document(id=row[0], name=row[1], role=row[2]) for row in rows]
+
+    def delete_document(self, document_id: int):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM documents
+                WHERE id = {0}
+                """.format(document_id),
+            )
+            self.conn.commit()
+
+    def close(self):
+        self.conn.close()
 
 
 class QA(rx.Base):
@@ -72,15 +134,6 @@ class State(rx.State):
 
     # The name of the new chat.
     new_chat_name: str = ""
-
-    # Documents owned by the user
-    documents: list[Document] = [
-        Document(id="1", role="j.zimmermann", name="j.zimmermann - 2022.pdf"),
-        Document(id="2", role="Public", name="Public - 2022.pdf"),
-        Document(id="3", role="chatdoc", name="chatdoc - 2022.pdf"),
-        Document(id="4", role="user", name="user - 2022.pdf"),
-        Document(id="5", role="user", name="user - 2022- final.pdf"),
-    ]
 
     # The current question.
     question: str
@@ -252,31 +305,31 @@ class State(rx.State):
     # Upload #
     ##########
 
+    @rx.var
+    def db_client(self):
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        user = os.environ.get("POSTGRES_USER", "postgres")
+        password = os.environ.get("POSTGRES_PASSWORD", "")
+        dbname = os.environ.get("POSTGRES_DB", "postgres")
+        return DatabaseHandler(dbname, user, password, host, port)
+
+    @rx.var
+    def documents(self) -> list[Document]:
+        return self.db_client.get_documents_by_roles(["user"])
+
     def set_upload_role(self, data: str):
         self.upload_role = data
+
+    def delete_document(self, document_id: int):
+        self.db_client.delete_document(document_id)
+        # TODO: Upgrade pinecone plan to support filtering for deletes
+        # self.vectordb.delete(filter={"metadata.document_id": document_id})
 
     # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
         self.progress = 0
-
-        folder = "tmp"
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-
-        # TODO: avoid collisions and delete temporary files
-        for file in files:
-            print(f"Processing {file.filename}")
-            with open(f"./{folder}/{file.filename}", "wb") as f:
-                f.write(await file.read())
-
-        self.progress = 40
-        yield
-
-        TMP_DIR = Path("./tmp")
-        loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
-        self.progress = 50
-        yield
 
         role = (
             self.upload_role
@@ -284,21 +337,54 @@ class State(rx.State):
             else SsoState.preferred_username
         )
 
-        documents = [
-            DocEntry(
-                page_content=doc.page_content,
-                metadata={**doc.metadata, "role": role},
-            )
-            for doc in loader.load()
-        ]
-        self.progress = 60
+        folder = "tmp"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        self.progress = 10
+
+        # TODO: avoid collisions and delete temporary files
+        documents = []
+        increment = 30 / len(files)
+        for file in files:
+            with open(f"./{folder}/{file.filename}", "wb") as f:
+                content = await file.read()
+                f.write(content)
+                documents.append(Document(role=role, name=file.filename))
+
+            self.progress += increment
+            yield
+
+        TMP_DIR = Path("./tmp")
+        loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
+        self.progress = 50
         yield
+
+        docentries = []
+        docs = loader.load()
+        increment = 30 / len(docs)
+
+        for doc in docs:
+            name = doc.metadata.get("source", "").split("/")[-1]
+            document_id = self.db_client.store_document(Document(name=name, role=role))
+
+            docentries.append(
+                DocEntry(
+                    page_content=doc.page_content,
+                    metadata={
+                        **doc.metadata,
+                        "role": role,
+                        "source": name,
+                        "document_id": document_id,
+                    },
+                )
+            )
+
+            self.progress += increment
+            yield
 
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        self.progress = 70
-        yield
-
-        chunks = text_splitter.split_documents(documents)
+        chunks = text_splitter.split_documents(docentries)
         self.progress = 80
         yield
 

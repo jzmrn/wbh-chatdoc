@@ -99,7 +99,7 @@ def list_docs() -> rx.Component:
                                         ),
                                         background_color=rx.color("mauve", 6),
                                         size="1",
-                                        # on_click=toggle_color_mode,
+                                        on_click=lambda: State.delete_document(doc.id),
                                     )
                                 ),
                             ),
