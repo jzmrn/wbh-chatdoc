@@ -66,35 +66,46 @@ def list_docs() -> rx.Component:
     return rx.vstack(
         rx.heading("Documents"),
         rx.box(
-            rx.vstack(
-                rx.foreach(
-                    State.documents,
-                    lambda doc: rx.card(
-                        rx.hstack(
-                            rx.text(doc.name, weight="bold"),
+            rx.cond(
+                State.documents_empty,
+                rx.box(
+                    rx.center("No documents uploaded yet."),
+                    rx.center(
+                        "Your roles are: " + SsoState.user_roles.join(", "),
+                    ),
+                    margin_y="2em",
+                ),
+                rx.vstack(
+                    rx.foreach(
+                        State.documents,
+                        lambda doc: rx.card(
                             rx.hstack(
-                                rx.badge(
-                                    doc.role,
-                                    variant="soft",
-                                    radius="full",
-                                ),
-                                rx.button(
-                                    rx.icon(
-                                        tag="trash",
-                                        color=rx.color("mauve", 12),
+                                rx.text(doc.name, weight="bold"),
+                                rx.hstack(
+                                    rx.badge(doc.created_at),
+                                    rx.badge(
+                                        doc.role,
+                                        variant="soft",
+                                        radius="full",
                                     ),
-                                    background_color=rx.color("mauve", 6),
-                                    size="1",
-                                    on_click=lambda: State.delete_document(doc.id),
+                                    rx.button(
+                                        rx.icon(
+                                            tag="trash",
+                                            color=rx.color("mauve", 12),
+                                        ),
+                                        background_color=rx.color("mauve", 6),
+                                        size="1",
+                                        on_click=lambda: State.delete_document(doc.id),
+                                    ),
                                 ),
+                                width="100%",
+                                justify="between",
                             ),
                             width="100%",
-                            justify="between",
                         ),
-                        width="100%",
                     ),
+                    width="100%",
                 ),
-                width="100%",
             ),
             width="100%",
         ),

@@ -44,6 +44,7 @@ class Document(rx.Base):
     id: str | None
     name: str
     role: str
+    created_at: str | None
 
 
 class DatabaseHandler:
@@ -60,7 +61,8 @@ class DatabaseHandler:
                 CREATE TABLE IF NOT EXISTS documents (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
-                    role VARCHAR(255) NOT NULL
+                    role VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
@@ -70,8 +72,8 @@ class DatabaseHandler:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO documents (name, role)
-                VALUES (%s, %s)
+                INSERT INTO documents (name, role, created_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
                 RETURNING id
                 """,
                 (document.name, document.role),
@@ -84,14 +86,24 @@ class DatabaseHandler:
         with self.conn.cursor() as cur:
             query = sql.SQL(
                 """
-                SELECT id, name, role
+                SELECT id, name, role, created_at
                 FROM documents
                 WHERE role IN (%s)
                 """
             )
             cur.execute(query, (roles))
             rows = cur.fetchall()
-            return [Document(id=row[0], name=row[1], role=row[2]) for row in rows]
+            return [
+                Document(
+                    id=row[0],
+                    name=row[1],
+                    role=row[2],
+                    created_at=row[3].strftime("%d.%m.%y"),
+                    # TODO: use datetime to support sorting and moment component
+                    # created_at=datetime(*[int(x) for x in re.findall(r"\d+", row[3])]),
+                )
+                for row in rows
+            ]
 
     def delete_document(self, document_id: int):
         with self.conn.cursor() as cur:
@@ -317,6 +329,10 @@ class State(rx.State):
     @rx.var
     def documents(self) -> list[Document]:
         return self.db_client.get_documents_by_roles(["user"])
+
+    @rx.var
+    def documents_empty(self) -> bool:
+        return len(self.documents) == 0
 
     def set_upload_role(self, data: str):
         self.upload_role = data
