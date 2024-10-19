@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
 import psycopg2
@@ -44,7 +45,7 @@ class Document(rx.Base):
     id: str | None
     name: str
     role: str
-    created_at: str | None
+    timestamp: datetime = datetime.now()
 
 
 class DatabaseHandler:
@@ -62,7 +63,7 @@ class DatabaseHandler:
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     role VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
@@ -84,23 +85,22 @@ class DatabaseHandler:
 
     def get_documents_by_roles(self, roles: list[str]) -> list[Document]:
         with self.conn.cursor() as cur:
+            placeholders = sql.SQL(", ").join(sql.Placeholder() * len(roles))
             query = sql.SQL(
                 """
                 SELECT id, name, role, created_at
                 FROM documents
-                WHERE role IN (%s)
+                WHERE role IN ({values})
                 """
-            )
-            cur.execute(query, (roles))
+            ).format(values=placeholders)
+            cur.execute(query, roles)
             rows = cur.fetchall()
             return [
                 Document(
                     id=row[0],
                     name=row[1],
                     role=row[2],
-                    created_at=row[3].strftime("%d.%m.%y"),
-                    # TODO: use datetime to support sorting and moment component
-                    # created_at=datetime(*[int(x) for x in re.findall(r"\d+", row[3])]),
+                    timestamp=row[3],
                 )
                 for row in rows
             ]
@@ -328,7 +328,7 @@ class State(rx.State):
 
     @rx.var
     def documents(self) -> list[Document]:
-        return self.db_client.get_documents_by_roles(["user"])
+        return self.db_client.get_documents_by_roles(["user", "Support"])
 
     @rx.var
     def documents_empty(self) -> bool:

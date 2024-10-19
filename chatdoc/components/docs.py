@@ -82,7 +82,7 @@ def list_docs() -> rx.Component:
                             rx.hstack(
                                 rx.text(doc.name, weight="bold"),
                                 rx.hstack(
-                                    rx.badge(doc.created_at),
+                                    rx.badge(rx.moment(doc.timestamp, from_now=True)),
                                     rx.badge(
                                         doc.role,
                                         variant="soft",
