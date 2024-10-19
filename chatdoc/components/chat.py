@@ -2,7 +2,7 @@ import reflex as rx
 import reflex_chakra as rc
 
 from chatdoc.components.common import content, header
-from chatdoc.state import QA, Document, State
+from chatdoc.state import QA, Chunk, State
 
 from .loading import loading_icon
 from .navbar import navbar
@@ -113,7 +113,7 @@ def message(qa: QA) -> rx.Component:
     )
 
 
-def display_ref(docx: Document) -> rx.Component:
+def display_ref(docx: Chunk) -> rx.Component:
     return rx.hover_card.root(
         rx.hover_card.trigger(
             rx.link(

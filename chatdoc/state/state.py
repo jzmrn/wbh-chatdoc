@@ -1,6 +1,8 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
+import psycopg2
 import reflex as rx
 from langchain.chains import (
     ConversationalRetrievalChain,
@@ -15,10 +17,12 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
+from psycopg2 import sql
 
 from chatdoc.constants import UPLOAD_ID
+
+from .auth import SsoState
 
 if "PINECONE_API_KEY" not in os.environ:
     raise ValueError("PINECONE_API_KEY is not set.")
@@ -27,7 +31,7 @@ if "OPENAI_API_KEY" not in os.environ:
     raise ValueError("OPENAI_API_KEY is not set.")
 
 
-class Document(rx.Base):
+class Chunk(rx.Base):
     """A document with metadata."""
 
     id: str
@@ -35,12 +39,92 @@ class Document(rx.Base):
     metadata: dict[str, str]
 
 
+class Document(rx.Base):
+    """A document with metadata."""
+
+    id: str | None
+    name: str
+    role: str
+    timestamp: datetime = datetime.now()
+
+
+class DatabaseHandler:
+    def __init__(self, dbname: str, user: str, password: str, host: str, port: str):
+        self.conn = psycopg2.connect(
+            dbname=dbname, user=user, password=password, host=host, port=port
+        )
+        self.ensure_table_exists()
+
+    def ensure_table_exists(self):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    role VARCHAR(255) NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            self.conn.commit()
+
+    def store_document(self, document: Document) -> int:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO documents (name, role, created_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                RETURNING id
+                """,
+                (document.name, document.role),
+            )
+            document_id = cur.fetchone()[0]
+            self.conn.commit()
+            return document_id
+
+    def get_documents_by_roles(self, roles: list[str]) -> list[Document]:
+        with self.conn.cursor() as cur:
+            placeholders = sql.SQL(", ").join(sql.Placeholder() * len(roles))
+            query = sql.SQL(
+                """
+                SELECT id, name, role, created_at
+                FROM documents
+                WHERE role IN ({values})
+                """
+            ).format(values=placeholders)
+            cur.execute(query, roles)
+            rows = cur.fetchall()
+            return [
+                Document(
+                    id=row[0],
+                    name=row[1],
+                    role=row[2],
+                    timestamp=row[3],
+                )
+                for row in rows
+            ]
+
+    def delete_document(self, document_id: int):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM documents
+                WHERE id = {0}
+                """.format(document_id),
+            )
+            self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
 class QA(rx.Base):
     """A question and answer pair."""
 
     question: str
     answer: str
-    context: list[Document]
+    context: list[Chunk]
 
 
 DEFAULT_CHATS = {"Intros": []}
@@ -132,9 +216,8 @@ class State(rx.State):
     @rx.var
     def chain(self) -> ConversationalRetrievalChain:
         llm = ChatOpenAI(
-            model_name="gpt-4o-mini",
+            model_name="gpt-3.5-turbo",
             temperature=0,
-            # streaming=True,
             api_key=os.environ["OPENAI_API_KEY"],
         )
 
@@ -156,7 +239,10 @@ class State(rx.State):
         history_aware_retriever = create_history_aware_retriever(
             llm,
             self.vectordb.as_retriever(
-                # search_kwargs={"filter": {"role": "file"}},
+                search_kwargs={
+                    "k": 2,
+                    # "filter": {"role": "file"},
+                },
             ),
             contextualize_q_prompt,
         )
@@ -184,19 +270,13 @@ class State(rx.State):
         question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
         return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
-    async def openai_process_question_rag(self, question: str):
-        # result = self.chain().stream({"question": question})
-        # response = result["answer"]
-        # st.session_state.messages.append({"role": "assistant", "content": response})
-        # utils.print_qa(CustomDocChatbot, user_query, response)
+    def process_question(self, form_data: dict[str, str]):
+        # Get the question from the form
+        question = form_data["question"]
 
-        # # to show references
-        # for idx, doc in enumerate(result["source_documents"], 1):
-        #     filename = os.path.basename(doc.metadata["source"])
-        #     page_num = doc.metadata["page"]
-        #     ref_title = f":blue[Reference {idx}: *{filename} - page.{page_num}*]"
-        #     with st.popover(ref_title):
-        #         st.caption(doc.page_content)
+        # Check if the question is empty
+        if question == "":
+            return
 
         # Add the question to the list of questions.
         qa = QA(question=question, answer="", context=[])
@@ -216,74 +296,111 @@ class State(rx.State):
         messages = messages[:-1]
 
         for item in self.chain.stream({"input": question, "chat_history": messages}):
-            if "context" in item and (ctx := item["context"]) is not None:
-                self.chats[self.current_chat][-1].context = [
-                    Document(id=d.id, page_content=d.page_content, metadata=d.metadata)
-                    for d in ctx
-                ]
-            if "answer" in item and (delta := item["answer"]) is not None:
-                self.chats[self.current_chat][-1].answer += delta
-            yield
+            answer = item.get("answer", "")
+            self.chats[self.current_chat][-1].answer += answer
+            # yield
+
+            context = item.get("context")
+            if not context:
+                continue
+
+            self.chats[self.current_chat][-1].context = [
+                Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
+                for d in context
+            ]
+            #     yield
 
         # Toggle the processing flag.
         self.processing = False
-
-    async def process_question(self, form_data: dict[str, str]):
-        # Get the question from the form
-        question = form_data["question"]
-
-        # Check if the question is empty
-        if question == "":
-            return
-
-        async for value in self.openai_process_question_rag(question):
-            yield value
 
     ##########
     # Upload #
     ##########
 
+    @rx.var
+    def db_client(self):
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        user = os.environ.get("POSTGRES_USER", "postgres")
+        password = os.environ.get("POSTGRES_PASSWORD", "")
+        dbname = os.environ.get("POSTGRES_DB", "postgres")
+        return DatabaseHandler(dbname, user, password, host, port)
+
+    @rx.var
+    def documents(self) -> list[Document]:
+        return self.db_client.get_documents_by_roles(["user", "Support"])
+
+    @rx.var
+    def documents_empty(self) -> bool:
+        return len(self.documents) == 0
+
     def set_upload_role(self, data: str):
         self.upload_role = data
+
+    def delete_document(self, document_id: int):
+        self.db_client.delete_document(document_id)
+        # TODO: Upgrade pinecone plan to support filtering for deletes
+        # self.vectordb.delete(filter={"metadata.document_id": document_id})
 
     # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
         self.progress = 0
 
+        role = (
+            self.upload_role
+            if self.upload_role != "Privat"
+            else SsoState.preferred_username
+        )
+
         folder = "tmp"
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-        # TODO: avoid collisions and delete temporary files
-        for file in files:
-            print(f"Processing {file.filename}")
-            with open(f"./{folder}/{file.filename}", "wb") as f:
-                f.write(await file.read())
+        self.progress = 10
 
-        self.progress = 40
-        yield
+        # TODO: avoid collisions and delete temporary files
+        documents = []
+        increment = 30 / len(files)
+        for file in files:
+            with open(f"./{folder}/{file.filename}", "wb") as f:
+                content = await file.read()
+                f.write(content)
+                documents.append(Document(role=role, name=file.filename))
+
+            self.progress += increment
+            yield
 
         TMP_DIR = Path("./tmp")
         loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
         self.progress = 50
         yield
 
-        documents = [
-            DocEntry(
-                page_content=doc.page_content,
-                metadata={**doc.metadata, "role": self.upload_role},
+        docentries = []
+        docs = loader.load()
+        increment = 30 / len(docs)
+
+        for doc in docs:
+            name = doc.metadata.get("source", "").split("/")[-1]
+            document_id = self.db_client.store_document(Document(name=name, role=role))
+
+            docentries.append(
+                DocEntry(
+                    page_content=doc.page_content,
+                    metadata={
+                        **doc.metadata,
+                        "role": role,
+                        "source": name,
+                        "document_id": document_id,
+                    },
+                )
             )
-            for doc in loader.load()
-        ]
-        self.progress = 60
-        yield
+
+            self.progress += increment
+            yield
 
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        self.progress = 70
-        yield
-
-        chunks = text_splitter.split_documents(documents)
+        chunks = text_splitter.split_documents(docentries)
         self.progress = 80
         yield
 
