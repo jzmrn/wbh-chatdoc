@@ -1,7 +1,7 @@
-Feature: Document Management Menu
-  In order to manage my documents effectively
+Feature: Menu
+  In order to use all functionalities of chatdoc easily
   As an employee
-  I want to access the document management section from the menu
+  I want to access the the function from the menu
 
   Scenario: Access document management section
     Given the user is logged in
