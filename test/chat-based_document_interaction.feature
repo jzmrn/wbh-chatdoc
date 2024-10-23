@@ -3,17 +3,19 @@ Feature: Chat-Based Document Interaction
   As an employee
   I want to ask questions and receive answers via chat
 
-  Scenario: Ask a question in chat
+  Background:
+    Given the user is logged in
+
+  Scenario: Ask german questions
     Given the user is in the chat section
-    When the user asks a question about a document
-    Then the system provides a relevant answer based on document content
+    When the user asks the question Welches Budget wurde für das Projekt geschätzt?
+    Then the answer contains 50.000€ and a link to Ist-Analyse.pdf
+    When the user asks the question Was ist die Deadline für das Projekt?
+    Then the answer contains 18.12.2024 and a link to Ist-Analyse.pdf
 
-  Scenario: View source of the answer
-    Given the user received an answer in chat
-    When the user wants to verify the information
-    Then the system provides a link to the source document
-
-  Scenario: Continue conversation in context
-    Given the user is in an ongoing chat
-    When the user asks a follow-up question
-    Then the system responds considering the context of the previous questions and answers
+  Scenario: Ask english questions
+    Given the user is in the chat section
+    When the user asks the question What budget was estimated for the project?
+    Then the answer contains 50.000€ and a link to Ist-Analyse.pdf
+    When the user asks the question What is the deadline for the project?
+    Then the answer contains 18th of December 2024 and a link to Ist-Analyse.pdf
