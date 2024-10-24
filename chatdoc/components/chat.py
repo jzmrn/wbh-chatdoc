@@ -3,6 +3,7 @@ import reflex_chakra as rc
 
 from chatdoc.components.common import content, header
 from chatdoc.state import QA, Chunk, State
+from chatdoc.state.models import Chat
 
 from .loading import loading_icon
 from .navbar import navbar
@@ -15,11 +16,11 @@ message_style = dict(
 )
 
 
-def sidebar_chat(chat: str) -> rx.Component:
+def sidebar_chat(chat: Chat) -> rx.Component:
     return rx.hstack(
         rx.button(
-            chat,
-            on_click=lambda: State.set_chat(chat),
+            chat.name,
+            on_click=lambda: State.set_chat(chat.id),
             width="100%",
             variant="surface",
             text_overflow="ellipsis",
@@ -35,7 +36,11 @@ def sidebar() -> rx.Component:
         rx.vstack(
             rx.heading("Chats", color=rx.color("mauve", 11)),
             rx.divider(),
-            rx.foreach(State.chat_titles, lambda chat: sidebar_chat(chat)),
+            rx.cond(
+                State.creating_chat,
+                rx.skeleton(sidebar_chat(Chat(name="...", userid="..."))),
+            ),
+            rx.foreach(State.chats, lambda chat: sidebar_chat(chat)),
             align_items="stretch",
             width="100%",
         ),
@@ -64,7 +69,7 @@ def modal(trigger) -> rx.Component:
                 rx.dialog.close(
                     rx.button(
                         "Create chat",
-                        on_click=State.create_chat,
+                        on_click=lambda: State.create_chat(State.preferred_username),
                     ),
                 ),
                 background_color=rx.color("mauve", 1),
@@ -129,7 +134,7 @@ def display_ref(docx: Chunk) -> rx.Component:
 def chat() -> rx.Component:
     """List all the messages in a single conversation."""
     return content(
-        rx.box(rx.foreach(State.chats[State.current_chat], message), width="100%"),
+        rx.box(rx.foreach(State.current_chat_messages, message), width="100%"),
     )
 
 
@@ -188,7 +193,7 @@ def chat_view() -> rx.Component:
             rx.box(
                 rx.vstack(
                     header(
-                        State.current_chat,
+                        State.current_chat_name,
                         modal(rx.button("+ New chat")),
                         rx.button(
                             rx.icon(

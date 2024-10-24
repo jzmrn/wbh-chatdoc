@@ -1,8 +1,8 @@
 import os
-from datetime import datetime
 from pathlib import Path
+from typing import Dict
 
-import psycopg2
+import msal
 import reflex as rx
 from langchain.chains import (
     ConversationalRetrievalChain,
@@ -13,6 +13,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema.document import Document as DocEntry
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -22,7 +23,8 @@ from psycopg2 import sql
 
 from chatdoc.constants import UPLOAD_ID
 
-from .auth import SsoState
+from .db import DatabaseHandler
+from .models import QA, Chat, Chunk, Document
 
 if "PINECONE_API_KEY" not in os.environ:
     raise ValueError("PINECONE_API_KEY is not set.")
@@ -30,122 +32,59 @@ if "PINECONE_API_KEY" not in os.environ:
 if "OPENAI_API_KEY" not in os.environ:
     raise ValueError("OPENAI_API_KEY is not set.")
 
+ENV_VAR_CLIENT_ID = "AZURE_CLIENT_ID"
+ENV_VAR_CLIENT_SECRET = "AZURE_CLIENT_SECRET"
+ENV_VAR_TENANT_ID = "AZURE_TENANT_ID"
 
-class Chunk(rx.Base):
-    """A document with metadata."""
+if not os.getenv(ENV_VAR_CLIENT_ID):
+    raise Exception(f"Please set {ENV_VAR_CLIENT_ID} environment variable.")
 
-    id: str
-    page_content: str
-    metadata: dict[str, str]
+if not os.getenv(ENV_VAR_CLIENT_SECRET):
+    raise Exception(f"Please set {ENV_VAR_CLIENT_SECRET} environment variable.")
 
+if not os.getenv(ENV_VAR_TENANT_ID):
+    raise Exception(f"Please set {ENV_VAR_TENANT_ID} environment variable.")
 
-class Document(rx.Base):
-    """A document with metadata."""
+client_id: str = os.environ.get(ENV_VAR_CLIENT_ID)
+client_secret: str = os.environ.get(ENV_VAR_CLIENT_SECRET)
+tenant_id: str = os.environ.get(ENV_VAR_TENANT_ID)
 
-    id: str | None
-    name: str
-    role: str
-    timestamp: datetime = datetime.now()
+authority = f"https://login.microsoftonline.com/{tenant_id}"
+login_redirect = "/chat"
+cache = msal.TokenCache()
 
-
-class DatabaseHandler:
-    def __init__(self, dbname: str, user: str, password: str, host: str, port: str):
-        self.conn = psycopg2.connect(
-            dbname=dbname, user=user, password=password, host=host, port=port
-        )
-        self.ensure_table_exists()
-
-    def ensure_table_exists(self):
-        with self.conn.cursor() as cur:
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS documents (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    role VARCHAR(255) NOT NULL,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            self.conn.commit()
-
-    def store_document(self, document: Document) -> int:
-        with self.conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO documents (name, role, created_at)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
-                RETURNING id
-                """,
-                (document.name, document.role),
-            )
-            document_id = cur.fetchone()[0]
-            self.conn.commit()
-            return document_id
-
-    def get_documents_by_roles(self, roles: list[str]) -> list[Document]:
-        with self.conn.cursor() as cur:
-            placeholders = sql.SQL(", ").join(sql.Placeholder() * len(roles))
-            query = sql.SQL(
-                """
-                SELECT id, name, role, created_at
-                FROM documents
-                WHERE role IN ({values})
-                """
-            ).format(values=placeholders)
-            cur.execute(query, roles)
-            rows = cur.fetchall()
-            return [
-                Document(
-                    id=row[0],
-                    name=row[1],
-                    role=row[2],
-                    timestamp=row[3],
-                )
-                for row in rows
-            ]
-
-    def delete_document(self, document_id: int):
-        with self.conn.cursor() as cur:
-            cur.execute(
-                """
-                DELETE FROM documents
-                WHERE id = {0}
-                """.format(document_id),
-            )
-            self.conn.commit()
-
-    def close(self):
-        self.conn.close()
-
-
-class QA(rx.Base):
-    """A question and answer pair."""
-
-    question: str
-    answer: str
-    context: list[Chunk]
-
-
-DEFAULT_CHATS = {"Intros": []}
+sso_app: msal.ClientApplication
+if client_secret:
+    sso_app = msal.ConfidentialClientApplication(
+        client_id=client_id,
+        client_credential=client_secret,
+        authority=authority,
+        token_cache=cache,
+    )
+else:
+    sso_app = msal.PublicClientApplication(
+        client_id=client_id,
+        authority=authority,
+        token_cache=cache,
+    )
 
 
 class State(rx.State):
     """The app state."""
 
+    creating_chat: bool = False
     uploading: bool = False
     progress: int = 0
 
-    upload_role: str = "user"
+    selected_chat: int | None = None
 
-    # A dict from the chat name to the list of questions and answers.
-    chats: dict[str, list[QA]] = DEFAULT_CHATS
-
-    # The current chat name.
-    current_chat = "Intros"
+    upload_role: str | None = None
 
     # The name of the new chat.
     new_chat_name: str = ""
+
+    cached_chats: dict[int, Chat] | None = None
+    cached_documents: dict[int, Document] | None = None
 
     # The current question.
     question: str
@@ -153,44 +92,129 @@ class State(rx.State):
     # Whether we are processing the question.
     processing: bool = False
 
+    _access_token: str = ""
+    _flow: dict
+    _token: Dict[str, str] = {}
+
+    def redirect_sso(self) -> rx.Component:
+        self._flow = sso_app.initiate_auth_code_flow(
+            scopes=[], redirect_uri=f"{self.router.page.host}/callback"
+        )
+        return rx.redirect(self._flow["auth_uri"])
+
+    def require_auth(self):
+        # TODO: validate token
+        if not self._token:
+            return self.redirect_sso()
+
+    @rx.var(cache=True)
+    def check_auth(self) -> bool:
+        return True if self._token else False
+
+    @rx.var(cache=True)
+    def user_name(self) -> str:
+        return self._token.get("name")
+
+    @rx.var(cache=True)
+    def preferred_username(self) -> str:
+        return self._token.get("preferred_username")
+
+    @rx.var(cache=True)
+    def user_roles(self) -> list[str]:
+        # TODO: do not hardcode but mock user roles
+        return ["Privat", "Support", "chatdoc", "Public"]
+
+    def logout(self):
+        self._token = {}
+        # This will logout the user from the SSO provider
+        # return rx.redirect(authority + "/oauth2/v2.0/logout")
+        return rx.redirect(self.router.page.host)
+
+    def callback(self):
+        query_components = self.router.page.params
+
+        auth_response = {
+            "code": query_components.get("code"),
+            "client_info": query_components.get("client_info"),
+            "state": query_components.get("state"),
+            "session_state": query_components.get("session_state"),
+            "client-secret": client_secret,
+        }
+        try:
+            result = sso_app.acquire_token_by_auth_code_flow(
+                self._flow, auth_response, scopes=[]
+            )
+        except Exception:
+            return rx.toast("error something went wrong")
+
+        self._access_token = result.get("access_token")
+        self._token = result.get("id_token_claims")
+        return rx.redirect(login_redirect)
+
     #########
     # Chats #
     #########
 
-    def create_chat(self):
-        """Create a new chat."""
-        # Add the new chat to the list of chats.
-        self.current_chat = self.new_chat_name
-        self.chats[self.new_chat_name] = []
+    @rx.var(cache=True)
+    def current_chat(self) -> Chat:
+        if self.preferred_username is None:
+            return Chat(name="General", userid="user", messages=[])
+
+        if len(self.chats) == 0:
+            chat = Chat(name="General", userid=self.preferred_username, messages=[])
+            chat.id = self.db.store_chat(chat)
+            self.cached_chats[chat.id] = chat
+            self.selected_chat = chat.id
+
+        if self.selected_chat is None or self.selected_chat not in self.cached_chats:
+            self.selected_chat = self.chats[0].id
+
+        return self.cached_chats[self.selected_chat]
+
+    @rx.var(cache=True)
+    def chats(self) -> list[Chat]:
+        if self.preferred_username is None:
+            return []
+
+        if self.cached_chats is None:
+            chats = self.db.get_chats_by_userid(self.preferred_username)
+            self.cached_chats = {chat.id: chat for chat in chats}
+
+        return list(self.cached_chats.values())
+
+    def create_chat(self, userid: str):
+        self.creating_chat = True
+        yield
+
+        chat = chat = Chat(
+            name=self.new_chat_name,
+            userid=f"{userid}",
+            messages=[],
+        )
+        chat.id = self.db.store_chat(chat)
+
+        self.creating_chat = False
+        self.cached_chats[chat.id] = chat
 
     def delete_chat(self):
-        """Delete the current chat."""
-        del self.chats[self.current_chat]
-        if len(self.chats) == 0:
-            self.chats = DEFAULT_CHATS
-        self.current_chat = list(self.chats.keys())[0]
+        id = self.current_chat.id
+        if id and self.selected_chat and self.selected_chat == id:
+            self.db.delete_chat(id)
+            del self.cached_chats[self.selected_chat]
 
-    def set_chat(self, chat_name: str):
-        """Set the name of the current chat.
+    def set_chat(self, chatid: int):
+        self.selected_chat = chatid
 
-        Args:
-            chat_name: The name of the chat.
-        """
-        self.current_chat = chat_name
+    def add_message(self, message: QA):
+        self.current_chat.messages.append(message)
 
-    @rx.var
-    def chat_titles(self) -> list[str]:
-        """Get the list of chat titles.
+    @rx.var(cache=True)
+    def current_chat_messages(self) -> list[QA]:
+        return self.current_chat.messages
 
-        Returns:
-            The list of chat names.
-        """
-        return list(self.chats.keys())
-
-    @rx.var
-    def current_chat_messages(self):
-        """Get the messages for the current chat."""
-        return self.chats[self.current_chat]
+    @rx.var(cache=True)
+    def current_chat_name(self) -> str:
+        return self.current_chat.name
 
     #######
     # LLM #
@@ -280,7 +304,7 @@ class State(rx.State):
 
         # Add the question to the list of questions.
         qa = QA(question=question, answer="", context=[])
-        self.chats[self.current_chat].append(qa)
+        self.current_chat.messages.append(qa)
 
         # Clear the input and start the processing.
         self.processing = True
@@ -297,20 +321,20 @@ class State(rx.State):
 
         for item in self.chain.stream({"input": question, "chat_history": messages}):
             answer = item.get("answer", "")
-            self.chats[self.current_chat][-1].answer += answer
+            self.current_chat.messages[-1].answer += answer
             # yield
 
             context = item.get("context")
             if not context:
                 continue
 
-            self.chats[self.current_chat][-1].context = [
+            self.current_chat.messages[-1].context = [
                 Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
                 for d in context
             ]
             #     yield
 
-        # Toggle the processing flag.
+        self.db.update_chat(self.current_chat)
         self.processing = False
 
     ##########
@@ -318,7 +342,7 @@ class State(rx.State):
     ##########
 
     @rx.var
-    def db_client(self):
+    def db(self):
         host = os.environ.get("POSTGRES_HOST", "localhost")
         port = os.environ.get("POSTGRES_PORT", "5432")
         user = os.environ.get("POSTGRES_USER", "postgres")
@@ -326,11 +350,22 @@ class State(rx.State):
         dbname = os.environ.get("POSTGRES_DB", "postgres")
         return DatabaseHandler(dbname, user, password, host, port)
 
-    @rx.var
+    @rx.var(cache=True)
     def documents(self) -> list[Document]:
-        return self.db_client.get_documents_by_roles(["user", "Support"])
+        print(self.preferred_username)
 
-    @rx.var
+        if self.preferred_username is None:
+            return {}
+
+        if self.cached_documents is None:
+            docs = self.db.get_documents_by_roles(
+                [*self.user_roles, self.preferred_username]
+            )
+            self.cached_documents = {doc.id: doc for doc in docs}
+
+        return list(self.cached_documents.values())
+
+    @rx.var(cache=True)
     def documents_empty(self) -> bool:
         return len(self.documents) == 0
 
@@ -338,7 +373,9 @@ class State(rx.State):
         self.upload_role = data
 
     def delete_document(self, document_id: int):
-        self.db_client.delete_document(document_id)
+        self.db.delete_document(document_id)
+        if document_id in self.cached_documents:
+            del self.cached_documents[document_id]
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self.vectordb.delete(filter={"metadata.document_id": document_id})
 
@@ -346,61 +383,52 @@ class State(rx.State):
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
         self.progress = 0
-
-        role = (
-            self.upload_role
-            if self.upload_role != "Privat"
-            else SsoState.preferred_username
-        )
+        role = self.upload_role if self.upload_role else self.preferred_username
 
         folder = "tmp"
         if not os.path.exists(folder):
             os.makedirs(folder)
 
         self.progress = 10
-
-        # TODO: avoid collisions and delete temporary files
-        documents = []
-        increment = 30 / len(files)
-        for file in files:
-            with open(f"./{folder}/{file.filename}", "wb") as f:
-                content = await file.read()
-                f.write(content)
-                documents.append(Document(role=role, name=file.filename))
-
-            self.progress += increment
-            yield
-
-        TMP_DIR = Path("./tmp")
-        loader = DirectoryLoader(TMP_DIR.as_posix(), glob="**/*.pdf")
-        self.progress = 50
         yield
 
-        docentries = []
-        docs = loader.load()
-        increment = 30 / len(docs)
+        increment = 70 / len(files)
+        documents = []
 
-        for doc in docs:
-            name = doc.metadata.get("source", "").split("/")[-1]
-            document_id = self.db_client.store_document(Document(name=name, role=role))
+        # TODO: avoid collisions and delete temporary files
+        for file in files:
+            name = file.filename
+            path = f"./{folder}/{name}"
 
-            docentries.append(
-                DocEntry(
-                    page_content=doc.page_content,
-                    metadata={
-                        **doc.metadata,
-                        "role": role,
-                        "source": name,
-                        "document_id": document_id,
-                    },
-                )
-            )
+            with open(path, "wb") as f:
+                content = await file.read()
+                f.write(content)
+
+                d = Document(name=name, role=role)
+                document_id = self.db.store_document(d)
+                d.id = document_id
+                self.cached_documents[d.id] = d
+
+                docs = PyPDFLoader(path).load()
+
+                for doc in docs:
+                    documents.append(
+                        DocEntry(
+                            page_content=doc.page_content,
+                            metadata={
+                                **doc.metadata,
+                                "role": role,
+                                "source": name,
+                                "document_id": document_id,
+                            },
+                        )
+                    )
 
             self.progress += increment
             yield
 
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        chunks = text_splitter.split_documents(docentries)
+        chunks = text_splitter.split_documents(documents)
         self.progress = 80
         yield
 
@@ -417,3 +445,13 @@ class State(rx.State):
     def cancel_upload(self):
         self.uploading = False
         return rx.cancel_upload(UPLOAD_ID)
+
+
+# sprache auf der anmeldeseite
+# dokument bei klick auf referenz öffnen
+
+# session cookie?
+# dokumente nach datum durchsuchen?
+
+# sprechblasen (optional)
+# message streaming (optional)

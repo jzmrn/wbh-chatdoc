@@ -1,7 +1,7 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-from chatdoc.state import SsoState
+from chatdoc.state import State
 
 
 def navbar_link(text: str, url: str) -> rx.Component:
@@ -35,7 +35,7 @@ def navbar():
             ),
             rx.hstack(
                 rx.badge(
-                    SsoState.user_name,
+                    State.user_name,
                     variant="soft",
                 ),
                 rx.button(
@@ -51,7 +51,7 @@ def navbar():
                         tag="log-out",
                         color=rx.color("mauve", 12),
                     ),
-                    on_click=SsoState.logout,
+                    on_click=State.logout,
                     background_color=rx.color("mauve", 6),
                 ),
                 align_items="center",

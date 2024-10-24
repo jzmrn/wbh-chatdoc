@@ -3,37 +3,37 @@
 import reflex as rx
 
 from chatdoc.components import chat_view, docs_view
-from chatdoc.state import SsoState
+from chatdoc.state import State
 
 
-@rx.page(route="/callback", on_load=SsoState.callback)
+@rx.page(route="/callback", on_load=State.callback)
 def callback() -> rx.Component:
     return rx.container()
 
 
-@rx.page(route="/logout", on_load=SsoState.logout)
+@rx.page(route="/logout", on_load=State.logout)
 def logout() -> rx.Component:
     return rx.container("Logged out")
 
 
-@rx.page(route="/chat", on_load=SsoState.require_auth)
+@rx.page(route="/chat", on_load=State.require_auth)
 def chat() -> rx.Component:
     return chat_view()
 
 
-@rx.page(route="/docs", on_load=SsoState.require_auth)
+@rx.page(route="/docs", on_load=State.require_auth)
 def docs() -> rx.Component:
     return docs_view()
 
 
-@rx.page(route="/login", on_load=SsoState.redirect_sso)
+@rx.page(route="/login", on_load=State.redirect_sso)
 def login() -> rx.Component:
     return rx.container()
 
 
 @rx.page(route="/")
 def main() -> rx.Component:
-    return rx.cond(SsoState.check_auth, chat_view(), unauth_view())
+    return rx.cond(State.check_auth, chat_view(), unauth_view())
 
 
 def unauth_view() -> rx.Component:
@@ -67,7 +67,7 @@ def unauth_view() -> rx.Component:
                     variant="outline",
                     size="3",
                     width="100%",
-                    on_click=SsoState.redirect_sso,
+                    on_click=State.redirect_sso,
                 ),
                 spacing="6",
                 width="100%",

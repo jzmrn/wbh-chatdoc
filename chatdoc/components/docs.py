@@ -1,7 +1,7 @@
 import reflex as rx
 
 from chatdoc.constants import UPLOAD_ID
-from chatdoc.state import SsoState, State
+from chatdoc.state import State
 
 from .common import content, header
 from .navbar import navbar
@@ -37,9 +37,13 @@ def upload_form():
                     rx.box(
                         rx.hstack(
                             rx.select(
-                                SsoState.user_roles,
+                                State.user_roles,
                                 default_value="Privat",
-                                on_change=State.set_upload_role,
+                                on_change=lambda role: rx.cond(
+                                    role == "Privat",
+                                    State.set_upload_role(State.preferred_username),
+                                    State.set_upload_role(role),
+                                ),
                                 disabled=State.uploading,
                             ),
                             rx.button(
@@ -71,7 +75,7 @@ def list_docs() -> rx.Component:
                 rx.box(
                     rx.center("No documents uploaded yet."),
                     rx.center(
-                        "Your roles are: " + SsoState.user_roles.join(", "),
+                        "Your roles are: " + State.user_roles.join(", "),
                     ),
                     margin_y="2em",
                 ),
