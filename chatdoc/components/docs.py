@@ -9,12 +9,12 @@ from .navbar import navbar
 
 def upload_form():
     return rx.vstack(
-        rx.heading("Upload documents"),
+        rx.heading(State.strings["docs.subheader"]),
         rx.form(
             rx.vstack(
                 rx.upload(
                     rx.text(
-                        "Drag and drop files here or click to select files",
+                        State.strings["docs.description"],
                         weight="bold",
                     ),
                     rx.foreach(rx.selected_files(UPLOAD_ID), rx.text),
@@ -29,7 +29,7 @@ def upload_form():
                 rx.cond(
                     State.uploading,
                     rx.box(
-                        rx.center("Your files are uploaded and processed..."),
+                        rx.center(State.strings["docs.processing"]),
                         rx.progress(value=State.progress, max=100),
                         padding="1em",
                         width="100%",
@@ -47,7 +47,7 @@ def upload_form():
                                 disabled=State.uploading,
                             ),
                             rx.button(
-                                "Upload",
+                                State.strings["docs.upload"],
                                 on_click=State.handle_upload(
                                     rx.upload_files(
                                         upload_id=UPLOAD_ID,
@@ -68,14 +68,14 @@ def upload_form():
 
 def list_docs() -> rx.Component:
     return rx.vstack(
-        rx.heading("Documents"),
+        rx.heading(State.strings["docs.title"]),
         rx.box(
             rx.cond(
                 State.documents_empty,
                 rx.box(
-                    rx.center("No documents uploaded yet."),
+                    rx.center(State.strings["docs.empty"]),
                     rx.center(
-                        "Your roles are: " + State.user_roles.join(", "),
+                        State.strings["docs.roles"] + State.user_roles.join(", "),
                     ),
                     margin_y="2em",
                 ),
@@ -120,11 +120,12 @@ def list_docs() -> rx.Component:
 def docs_view() -> rx.Component:
     return rx.vstack(
         navbar(),
-        header(rx.heading("Docs")),
+        header(rx.heading(State.strings["docs.header"])),
         content(upload_form(), rx.divider(margin_y="2em"), list_docs()),
         background_color=rx.color("mauve", 1),
         color=rx.color("mauve", 12),
         min_height="100vh",
         align_items="stretch",
         spacing="0",
+        on_mount=State.update_strings,
     )

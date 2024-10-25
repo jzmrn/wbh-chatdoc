@@ -1,6 +1,8 @@
+import json
 import os
+import pathlib
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 import msal
 import reflex as rx
@@ -21,7 +23,7 @@ from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 from psycopg2 import sql
 
-from chatdoc.constants import UPLOAD_ID
+from chatdoc.constants import LANGKEYS, OPTION_ENGLISH, OPTION_GERMAN, UPLOAD_ID
 
 from .db import DatabaseHandler
 from .models import QA, Chat, Chunk, Document
@@ -69,8 +71,38 @@ else:
     )
 
 
+def key_recursion(t: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """
+    Returns a 'flatten' dictionary
+    :param t:
+    :param prefix:
+    :return:
+    """
+    ret = {}
+    for k, v in t.items():
+        if len(prefix) > 0:
+            k = prefix + "." + k
+
+        if isinstance(v, dict):
+            ret.update(key_recursion(v, k))
+        else:
+            ret[k] = v
+    return ret
+
+
 class State(rx.State):
     """The app state."""
+
+    language: str = OPTION_GERMAN
+    path: str = "assets/locales"
+    strings: dict[str, str] = key_recursion(
+        json.loads(
+            (
+                pathlib.Path(path) / LANGKEYS[OPTION_GERMAN] / "translation.json"
+            ).read_text(encoding="utf-8")
+        )
+    )
+    languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
 
     creating_chat: bool = False
     uploading: bool = False
@@ -109,6 +141,7 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def check_auth(self) -> bool:
+        # TODO: validate token
         return True if self._token else False
 
     @rx.var(cache=True)
@@ -150,6 +183,29 @@ class State(rx.State):
         self._access_token = result.get("access_token")
         self._token = result.get("id_token_claims")
         return rx.redirect(login_redirect)
+
+    ############
+    # Language #
+    ############
+
+    def select_language(self, lng: str):
+        if lng in self.languages:
+            self.language = lng
+            self.update_strings()
+
+    def update_strings(self):
+        if self.language not in LANGKEYS:
+            return
+
+        self.strings = key_recursion(
+            json.loads(
+                (
+                    pathlib.Path(self.path)
+                    / LANGKEYS[self.language]
+                    / "translation.json"
+                ).read_text(encoding="utf-8")
+            )
+        )
 
     #########
     # Chats #

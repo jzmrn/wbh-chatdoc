@@ -101,7 +101,7 @@ ENV/
 MANIFEST
 __pycache__/
 __pypackages__/
-assets/
+# assets/
 assets/external/
 build/
 celerybeat-schedule
