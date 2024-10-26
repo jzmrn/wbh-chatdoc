@@ -34,7 +34,7 @@ def sidebar_chat(chat: Chat) -> rx.Component:
 def sidebar() -> rx.Component:
     return rx.vstack(
         rx.vstack(
-            rx.heading("Chats", color=rx.color("mauve", 11)),
+            rx.heading(State.strings["chat.header"], color=rx.color("mauve", 11)),
             rx.divider(),
             rx.cond(
                 State.creating_chat,
@@ -68,7 +68,7 @@ def modal(trigger) -> rx.Component:
                 ),
                 rx.dialog.close(
                     rx.button(
-                        "Create chat",
+                        State.strings["chat.create"],
                         on_click=lambda: State.create_chat(State.preferred_username),
                     ),
                 ),
@@ -132,14 +132,12 @@ def display_ref(docx: Chunk) -> rx.Component:
 
 
 def chat() -> rx.Component:
-    """List all the messages in a single conversation."""
     return content(
-        rx.box(rx.foreach(State.current_chat_messages, message), width="100%"),
+        rx.box(rx.foreach(State.current_chat.messages, message), width="100%"),
     )
 
 
 def action_bar() -> rx.Component:
-    """The action bar to send a new message."""
     return rx.center(
         rx.vstack(
             rx.form(
@@ -152,7 +150,7 @@ def action_bar() -> rx.Component:
                                     content="Enter a question to get a response.",
                                 )
                             ),
-                            placeholder="Type something...",
+                            placeholder=State.strings["chat.input"],
                             id="question",
                             width=["15em", "20em", "45em", "50em", "50em", "50em"],
                         ),
@@ -160,7 +158,7 @@ def action_bar() -> rx.Component:
                             rx.cond(
                                 State.processing,
                                 loading_icon(height="1em"),
-                                rx.text("Send"),
+                                rx.text(State.strings["chat.send"]),
                             ),
                             type="submit",
                         ),
@@ -193,8 +191,8 @@ def chat_view() -> rx.Component:
             rx.box(
                 rx.vstack(
                     header(
-                        State.current_chat_name,
-                        modal(rx.button("+ New chat")),
+                        State.current_chat.name,
+                        modal(rx.button(State.strings["chat.new"])),
                         rx.button(
                             rx.icon(
                                 tag="trash",
@@ -216,4 +214,5 @@ def chat_view() -> rx.Component:
         color=rx.color("mauve", 12),
         align_items="stretch",
         spacing="0",
+        on_mount=State.update_strings,
     )

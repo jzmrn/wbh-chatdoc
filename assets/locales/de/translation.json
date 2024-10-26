@@ -1,0 +1,30 @@
+{
+  "title": "chatdoc.",
+  "login": {
+    "header": "Anmelden",
+    "description": "Sprache auswählen und anmelden.",
+    "button": "Mit Microsoft anmelden"
+  },
+  "menu": {
+    "chat": "Chat",
+    "docs": "Docs",
+    "logout": "Abmelden"
+  },
+  "chat": {
+    "header": "Chats",
+    "input": "Stelle eine Frage...",
+    "send": "Senden",
+    "create": "Neuen Chat erstellen",
+    "new": "+ Neuer Chat"
+  },
+  "docs": {
+    "header": "Docs",
+    "subheader": "Dokumente hochladen",
+    "title": "Dokumente",
+    "upload": "Hochladen",
+    "description": "Dateien hier ablegen oder klicken um Dateien auszuwählen",
+    "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
+    "empty": "Keine Dokumente hochgeladen...",
+    "roles": "Deine Rollen: "
+  }
+}

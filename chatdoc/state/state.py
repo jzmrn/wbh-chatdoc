@@ -1,30 +1,18 @@
+import json
 import os
-from pathlib import Path
-from typing import Dict
+import pathlib
+from typing import Any, Dict
 
 import msal
 import reflex as rx
-from langchain.chains import (
-    ConversationalRetrievalChain,
-    create_history_aware_retriever,
-    create_retrieval_chain,
-)
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema.document import Document as DocEntry
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.document_loaders.pdf import PyPDFLoader
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
-from pinecone import Pinecone, ServerlessSpec
-from psycopg2 import sql
 
-from chatdoc.constants import UPLOAD_ID
+from chatdoc.constants import LANGKEYS, OPTION_ENGLISH, OPTION_GERMAN, UPLOAD_ID
 
-from .db import DatabaseHandler
 from .models import QA, Chat, Chunk, Document
+from .sigletons import Chain, Database, Vector
 
 if "PINECONE_API_KEY" not in os.environ:
     raise ValueError("PINECONE_API_KEY is not set.")
@@ -69,8 +57,38 @@ else:
     )
 
 
+def key_recursion(t: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """
+    Returns a 'flatten' dictionary
+    :param t:
+    :param prefix:
+    :return:
+    """
+    ret = {}
+    for k, v in t.items():
+        if len(prefix) > 0:
+            k = prefix + "." + k
+
+        if isinstance(v, dict):
+            ret.update(key_recursion(v, k))
+        else:
+            ret[k] = v
+    return ret
+
+
 class State(rx.State):
     """The app state."""
+
+    language: str = OPTION_GERMAN
+    path: str = "assets/locales"
+    strings: dict[str, str] = key_recursion(
+        json.loads(
+            (
+                pathlib.Path(path) / LANGKEYS[OPTION_GERMAN] / "translation.json"
+            ).read_text(encoding="utf-8")
+        )
+    )
+    languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
 
     creating_chat: bool = False
     uploading: bool = False
@@ -96,6 +114,10 @@ class State(rx.State):
     _flow: dict
     _token: Dict[str, str] = {}
 
+    #########
+    # Login #
+    #########
+
     def redirect_sso(self) -> rx.Component:
         self._flow = sso_app.initiate_auth_code_flow(
             scopes=[], redirect_uri=f"{self.router.page.host}/callback"
@@ -109,6 +131,7 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def check_auth(self) -> bool:
+        # TODO: validate token
         return True if self._token else False
 
     @rx.var(cache=True)
@@ -151,6 +174,29 @@ class State(rx.State):
         self._token = result.get("id_token_claims")
         return rx.redirect(login_redirect)
 
+    ############
+    # Language #
+    ############
+
+    def select_language(self, lng: str):
+        if lng in self.languages:
+            self.language = lng
+            self.update_strings()
+
+    def update_strings(self):
+        if self.language not in LANGKEYS:
+            return
+
+        self.strings = key_recursion(
+            json.loads(
+                (
+                    pathlib.Path(self.path)
+                    / LANGKEYS[self.language]
+                    / "translation.json"
+                ).read_text(encoding="utf-8")
+            )
+        )
+
     #########
     # Chats #
     #########
@@ -162,7 +208,7 @@ class State(rx.State):
 
         if len(self.chats) == 0:
             chat = Chat(name="General", userid=self.preferred_username, messages=[])
-            chat.id = self.db.store_chat(chat)
+            chat.id = Database.get_instance().db.store_chat(chat)
             self.cached_chats[chat.id] = chat
             self.selected_chat = chat.id
 
@@ -177,7 +223,9 @@ class State(rx.State):
             return []
 
         if self.cached_chats is None:
-            chats = self.db.get_chats_by_userid(self.preferred_username)
+            chats = Database.get_instance().db.get_chats_by_userid(
+                self.preferred_username
+            )
             self.cached_chats = {chat.id: chat for chat in chats}
 
         return list(self.cached_chats.values())
@@ -191,7 +239,7 @@ class State(rx.State):
             userid=f"{userid}",
             messages=[],
         )
-        chat.id = self.db.store_chat(chat)
+        chat.id = Database.get_instance().db.store_chat(chat)
 
         self.creating_chat = False
         self.cached_chats[chat.id] = chat
@@ -199,7 +247,7 @@ class State(rx.State):
     def delete_chat(self):
         id = self.current_chat.id
         if id and self.selected_chat and self.selected_chat == id:
-            self.db.delete_chat(id)
+            Database.get_instance().db.delete_chat(id)
             del self.cached_chats[self.selected_chat]
 
     def set_chat(self, chatid: int):
@@ -208,91 +256,9 @@ class State(rx.State):
     def add_message(self, message: QA):
         self.current_chat.messages.append(message)
 
-    @rx.var(cache=True)
-    def current_chat_messages(self) -> list[QA]:
-        return self.current_chat.messages
-
-    @rx.var(cache=True)
-    def current_chat_name(self) -> str:
-        return self.current_chat.name
-
     #######
     # LLM #
     #######
-
-    @rx.var
-    def vectordb(self) -> PineconeVectorStore:
-        pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
-        embeddings = OpenAIEmbeddings(api_key=os.environ["OPENAI_API_KEY"])
-
-        index_name = "langchain-demo"
-        if index_name not in pc.list_indexes().names():
-            pc.create_index(
-                name=index_name,
-                metric="cosine",
-                dimension=1536,
-                spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-            )
-
-        index = pc.Index(index_name)
-        return PineconeVectorStore(index=index, embedding=embeddings)
-
-    @rx.var
-    def chain(self) -> ConversationalRetrievalChain:
-        llm = ChatOpenAI(
-            model_name="gpt-3.5-turbo",
-            temperature=0,
-            api_key=os.environ["OPENAI_API_KEY"],
-        )
-
-        # Contextualize question
-        contextualize_q_system_prompt = (
-            "Given a chat history and the latest user question "
-            "which might reference context in the chat history, "
-            "formulate a standalone question which can be understood "
-            "without the chat history. Do NOT answer the question, just "
-            "reformulate it if needed and otherwise return it as is."
-        )
-        contextualize_q_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", contextualize_q_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-        history_aware_retriever = create_history_aware_retriever(
-            llm,
-            self.vectordb.as_retriever(
-                search_kwargs={
-                    "k": 2,
-                    # "filter": {"role": "file"},
-                },
-            ),
-            contextualize_q_prompt,
-        )
-
-        # Answer question
-        qa_system_prompt = (
-            "You are an assistant called chatdoc for question-answering tasks."
-            "Use the following pieces of retrieved context to answer the "
-            "question. If you don't know the answer, just say that you "
-            "don't know. Use three sentences maximum and keep the answer "
-            "concise."
-            "Context: {context}"
-        )
-        qa_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", qa_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        # Below we use create_stuff_documents_chain to feed all retrieved context
-        # into the LLM. Note that we can also use StuffDocumentsChain and other
-        # instances of BaseCombineDocumentsChain.
-        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
-        return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
     def process_question(self, form_data: dict[str, str]):
         # Get the question from the form
@@ -312,53 +278,44 @@ class State(rx.State):
 
         # Build the messages.
         messages = []
-        for qa in self.current_chat_messages:
+        for qa in self.current_chat.messages:
             messages.append(("user", qa.question))
             messages.append(("ai", qa.answer))
 
         # Remove the last mock answer.
         messages = messages[:-1]
 
-        for item in self.chain.stream({"input": question, "chat_history": messages}):
+        for item in Chain.get_instance().chain.stream(
+            {"input": question, "chat_history": messages}
+        ):
             answer = item.get("answer", "")
-            self.current_chat.messages[-1].answer += answer
-            # yield
+            self.cached_chats[self.selected_chat].messages[-1].answer += answer
+            yield
 
             context = item.get("context")
             if not context:
                 continue
 
-            self.current_chat.messages[-1].context = [
+            self.cached_chats[self.selected_chat].messages[-1].context = [
                 Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
                 for d in context
             ]
-            #     yield
+            yield
 
-        self.db.update_chat(self.current_chat)
+        Database.get_instance().db.update_chat(self.cached_chats[self.selected_chat])
         self.processing = False
 
     ##########
     # Upload #
     ##########
 
-    @rx.var
-    def db(self):
-        host = os.environ.get("POSTGRES_HOST", "localhost")
-        port = os.environ.get("POSTGRES_PORT", "5432")
-        user = os.environ.get("POSTGRES_USER", "postgres")
-        password = os.environ.get("POSTGRES_PASSWORD", "")
-        dbname = os.environ.get("POSTGRES_DB", "postgres")
-        return DatabaseHandler(dbname, user, password, host, port)
-
     @rx.var(cache=True)
     def documents(self) -> list[Document]:
-        print(self.preferred_username)
-
         if self.preferred_username is None:
             return {}
 
         if self.cached_documents is None:
-            docs = self.db.get_documents_by_roles(
+            docs = Database.get_instance().db.get_documents_by_roles(
                 [*self.user_roles, self.preferred_username]
             )
             self.cached_documents = {doc.id: doc for doc in docs}
@@ -373,11 +330,11 @@ class State(rx.State):
         self.upload_role = data
 
     def delete_document(self, document_id: int):
-        self.db.delete_document(document_id)
+        Database.get_instance().db.delete_document(document_id)
         if document_id in self.cached_documents:
             del self.cached_documents[document_id]
         # TODO: Upgrade pinecone plan to support filtering for deletes
-        # self.vectordb.delete(filter={"metadata.document_id": document_id})
+        # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
     # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -405,7 +362,7 @@ class State(rx.State):
                 f.write(content)
 
                 d = Document(name=name, role=role)
-                document_id = self.db.store_document(d)
+                document_id = Database.get_instance().db.store_document(d)
                 d.id = document_id
                 self.cached_documents[d.id] = d
 
@@ -432,7 +389,7 @@ class State(rx.State):
         self.progress = 80
         yield
 
-        self.vectordb.add_documents(chunks)
+        Vector.get_instance().db.add_documents(chunks)
 
         self.progress = 100
         self.uploading = False
@@ -447,7 +404,6 @@ class State(rx.State):
         return rx.cancel_upload(UPLOAD_ID)
 
 
-# sprache auf der anmeldeseite
 # dokument bei klick auf referenz öffnen
 
 # session cookie?

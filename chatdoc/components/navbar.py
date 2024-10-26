@@ -22,13 +22,15 @@ def navbar():
     return rx.box(
         rx.hstack(
             rx.hstack(
-                rx.heading("chatdoc."),
+                rx.heading(State.strings["title"]),
                 align_items="center",
                 height="100%",
             ),
             rx.hstack(
-                navbar_icons_item("Chat", "messages-square", "/chat"),
-                navbar_icons_item("Docs", "file-text", "/docs"),
+                navbar_icons_item(
+                    State.strings["menu.chat"], "messages-square", "/chat"
+                ),
+                navbar_icons_item(State.strings["menu.docs"], "file-text", "/docs"),
                 spacing="5",
                 align_items="center",
                 height="100%",

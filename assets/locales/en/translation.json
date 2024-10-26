@@ -1,0 +1,30 @@
+{
+  "title": "chatdoc.",
+  "login": {
+    "header": "Sign in to your account",
+    "description": "Select your language and sign in.",
+    "button": "Sign in with Microsoft"
+  },
+  "menu": {
+    "chat": "Chat",
+    "docs": "Docs",
+    "logout": "Sign out"
+  },
+  "chat": {
+    "header": "Chat",
+    "input": "Ask a question...",
+    "send": "Send",
+    "create": "Create a new Chat",
+    "new": "+ New chat"
+  },
+  "docs": {
+    "header": "Docs",
+    "upload": "Upload",
+    "title": "Documents",
+    "subheader": "Upload documents",
+    "description": "Drag and drop files here or click to select files",
+    "processing": "Your files are uploaded and processed...",
+    "empty": "No documents uploaded yet...",
+    "roles": "Your roles: "
+  }
+}
