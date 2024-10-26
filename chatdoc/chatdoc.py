@@ -50,7 +50,7 @@ def unauth_view() -> rx.Component:
                         width="100%",
                     ),
                     rx.heading(
-                        "Sign in to your account",
+                        State.strings["login.header"],
                         size="6",
                         as_="h2",
                         text_align="left",

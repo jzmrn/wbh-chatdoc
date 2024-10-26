@@ -133,7 +133,7 @@ def display_ref(docx: Chunk) -> rx.Component:
 
 def chat() -> rx.Component:
     return content(
-        rx.box(rx.foreach(State.current_chat_messages, message), width="100%"),
+        rx.box(rx.foreach(State.current_chat.messages, message), width="100%"),
     )
 
 
@@ -191,7 +191,7 @@ def chat_view() -> rx.Component:
             rx.box(
                 rx.vstack(
                     header(
-                        State.current_chat_name,
+                        State.current_chat.name,
                         modal(rx.button(State.strings["chat.new"])),
                         rx.button(
                             rx.icon(
