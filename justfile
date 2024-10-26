@@ -1,14 +1,20 @@
 set dotenv-load
 
 # List all available commands
-default:
-    just --list
+@default:
+    just --unsorted --list
+
 
 # Install dependencies
 install:
     poetry install
-    reflex init
+    # reflex init
 
 # Run the app locally
 run:
     poetry run reflex run
+
+# build docker image
+build:
+    docker build -t chatdoc .
+    docker tag chatdoc:latest chatdoc:dev

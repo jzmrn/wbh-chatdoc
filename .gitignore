@@ -43,6 +43,7 @@
 # Spyder project settings
 # Translations
 # Unit test / coverage reports
+# assets/
 # mkdocs documentation
 # mypy
 # pdm
@@ -101,7 +102,6 @@ ENV/
 MANIFEST
 __pycache__/
 __pypackages__/
-# assets/
 assets/external/
 build/
 celerybeat-schedule
