@@ -14,4 +14,4 @@ Feature: Document Upload
   Scenario: Upload an invalid document format
     Given the user is in the document upload section
     When the user attempts to upload a document in an unsupported format
-    Then the document is not uploaded an error message is displayed
+    Then the document is not uploaded

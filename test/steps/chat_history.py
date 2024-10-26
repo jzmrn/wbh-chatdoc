@@ -27,7 +27,7 @@ def step_impl(context):
     raise NotImplementedError(u'STEP: Then the chat conversation is displayed')
 
 
-@step("the user can continue the conversation if needed")
+@then("the user can continue the conversation if needed")
 def step_impl(context):
     """
     :type context: behave.runner.Context

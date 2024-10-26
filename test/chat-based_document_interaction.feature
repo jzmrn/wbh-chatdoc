@@ -4,7 +4,10 @@ Feature: Chat-Based Document Interaction
   I want to ask questions and receive answers via chat
 
   Background:
-    Given the user is logged in
+    Given the user with role test is logged in
+    And document Ist-Analyse.pdf with role test is uploaded
+    And document Kommunikationsplan.pdf with role test is uploaded
+    And no other documents are uploaded
 
   Scenario: Ask german questions
     Given the user is in the chat section
