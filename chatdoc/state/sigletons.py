@@ -1,5 +1,6 @@
 import os
 
+import msal
 from langchain.chains import (
     ConversationalRetrievalChain,
     create_history_aware_retriever,
@@ -143,6 +144,47 @@ class Chain:
             history_aware_retriever, question_answer_chain
         )
         self.initialized = True
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+
+class Sso:
+    _instance = None
+    app: msal.ClientApplication
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Sso, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    def __init__(self):
+        if not hasattr(self, "initialized"):  # Ensure __init__ runs only once
+            client_id: str = os.environ.get("AZURE_CLIENT_ID")
+            client_secret: str = os.environ.get("AZURE_CLIENT_SECRET")
+            tenant_id: str = os.environ.get("AZURE_TENANT_ID")
+
+            authority = f"https://login.microsoftonline.com/{tenant_id}"
+            cache = msal.TokenCache()
+
+            if client_secret:
+                self.app = msal.ConfidentialClientApplication(
+                    client_id=client_id,
+                    client_credential=client_secret,
+                    authority=authority,
+                    token_cache=cache,
+                )
+            else:
+                self.app = msal.PublicClientApplication(
+                    client_id=client_id,
+                    authority=authority,
+                    token_cache=cache,
+                )
+
+            self.initialized = True
 
     @classmethod
     def get_instance(cls):
