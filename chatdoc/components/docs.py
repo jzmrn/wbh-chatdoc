@@ -84,13 +84,31 @@ def list_docs() -> rx.Component:
                         State.documents,
                         lambda doc: rx.card(
                             rx.hstack(
-                                rx.text(doc.name, weight="bold"),
+                                rx.text(
+                                    doc.name,
+                                    weight="bold",
+                                    ellipsis=True,
+                                    overflow="hidden",
+                                    white_space="nowrap",
+                                ),
                                 rx.hstack(
                                     rx.badge(rx.moment(doc.timestamp, from_now=True)),
                                     rx.badge(
                                         doc.role,
                                         variant="soft",
                                         radius="full",
+                                    ),
+                                    rx.button(
+                                        rx.icon(
+                                            tag="download",
+                                            color=rx.color("mauve", 12),
+                                        ),
+                                        background_color=rx.color("mauve", 6),
+                                        size="1",
+                                        on_click=lambda: State.download_file(
+                                            doc.id,
+                                            doc.name,
+                                        ),
                                     ),
                                     rx.button(
                                         rx.icon(

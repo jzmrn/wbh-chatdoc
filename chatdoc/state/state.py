@@ -33,6 +33,9 @@ if not os.getenv(ENV_VAR_CLIENT_SECRET):
 if not os.getenv(ENV_VAR_TENANT_ID):
     raise Exception(f"Please set {ENV_VAR_TENANT_ID} environment variable.")
 
+if not os.getenv("STORAGE_MOUNT"):
+    raise Exception("Please set STORAGE_MOUNT environment variable.")
+
 client_id: str = os.environ.get(ENV_VAR_CLIENT_ID)
 client_secret: str = os.environ.get(ENV_VAR_CLIENT_SECRET)
 tenant_id: str = os.environ.get(ENV_VAR_TENANT_ID)
@@ -58,12 +61,6 @@ else:
 
 
 def key_recursion(t: dict[str, Any], prefix: str = "") -> dict[str, Any]:
-    """
-    Returns a 'flatten' dictionary
-    :param t:
-    :param prefix:
-    :return:
-    """
     ret = {}
     for k, v in t.items():
         if len(prefix) > 0:
@@ -336,39 +333,36 @@ class State(rx.State):
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
-    # Save the files, create chunks, and add them to the vector store
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
         self.progress = 0
         role = self.upload_role if self.upload_role else self.preferred_username
 
-        folder = "tmp"
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        try:
+            dir = os.getenv("STORAGE_MOUNT")
+            if not os.path.exists(dir):
+                os.makedirs(dir)
 
-        self.progress = 10
-        yield
+            self.progress = 10
+            yield
 
-        increment = 70 / len(files)
-        documents = []
+            increment = 70 / len(files)
+            documents = []
 
-        # TODO: avoid collisions and delete temporary files
-        for file in files:
-            name = file.filename
-            path = f"./{folder}/{name}"
+            for file in files:
+                name = file.filename
 
-            with open(path, "wb") as f:
-                content = await file.read()
-                f.write(content)
+                doc = Document(name=name, role=role)
+                document_id = Database.get_instance().db.store_document(doc)
+                doc.id = document_id
+                self.cached_documents[doc.id] = doc
 
-                d = Document(name=name, role=role)
-                document_id = Database.get_instance().db.store_document(d)
-                d.id = document_id
-                self.cached_documents[d.id] = d
+                path = f"./{dir}/{document_id}"
+                with open(path, "wb") as f:
+                    content = await file.read()
+                    f.write(content)
 
-                docs = PyPDFLoader(path).load()
-
-                for doc in docs:
+                for doc in PyPDFLoader(path).load():
                     documents.append(
                         DocEntry(
                             page_content=doc.page_content,
@@ -381,18 +375,23 @@ class State(rx.State):
                         )
                     )
 
-            self.progress += increment
+                self.progress += increment
+                yield
+
+            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+            chunks = text_splitter.split_documents(documents)
+            self.progress = 80
             yield
 
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        chunks = text_splitter.split_documents(documents)
-        self.progress = 80
-        yield
+            Vector.get_instance().db.add_documents(chunks)
 
-        Vector.get_instance().db.add_documents(chunks)
+            self.progress = 100
+            self.uploading = False
 
-        self.progress = 100
-        self.uploading = False
+        except Exception:
+            self.uploading = False
+            self.progress = 0
+            yield rx.toast.error(self.strings["error.upload"], position="bottom-center")
 
     # Upload itself is only the first step of the process (20%)
     def handle_upload_progress(self, progress: dict):
@@ -403,11 +402,17 @@ class State(rx.State):
         self.uploading = False
         return rx.cancel_upload(UPLOAD_ID)
 
+    def download_file(self, fid: int, filename: str):
+        try:
+            id = str(fid).split(".")[0]
+            with open(f"tmp/{id}", "rb") as f:
+                data = f.read()
 
-# dokument bei klick auf referenz öffnen
-
-# session cookie?
-# dokumente nach datum durchsuchen?
-
-# sprechblasen (optional)
-# message streaming (optional)
+            return rx.download(
+                data=data,
+                filename=filename,
+            )
+        except Exception:
+            return rx.toast.error(
+                self.strings["error.download"], position="bottom-center"
+            )

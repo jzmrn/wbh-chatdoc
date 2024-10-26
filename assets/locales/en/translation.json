@@ -14,8 +14,7 @@
     "header": "Chat",
     "input": "Ask a question...",
     "send": "Send",
-    "create": "Create a new Chat",
-    "new": "+ New chat"
+    "create": "Create a new Chat"
   },
   "docs": {
     "header": "Docs",
@@ -26,5 +25,9 @@
     "processing": "Your files are uploaded and processed...",
     "empty": "No documents uploaded yet...",
     "roles": "Your roles: "
+  },
+  "error": {
+    "upload": "Upload failed. Please try again later.",
+    "download": "Download failed. Please try again later."
   }
 }

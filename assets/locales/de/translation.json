@@ -14,8 +14,7 @@
     "header": "Chats",
     "input": "Stelle eine Frage...",
     "send": "Senden",
-    "create": "Neuen Chat erstellen",
-    "new": "+ Neuer Chat"
+    "create": "Neuen Chat erstellen"
   },
   "docs": {
     "header": "Docs",
@@ -26,5 +25,9 @@
     "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
     "empty": "Keine Dokumente hochgeladen...",
     "roles": "Deine Rollen: "
+  },
+  "error": {
+    "upload": "Upload fehlgeschlagen. Bitte versuchen Sie es später erneut.",
+    "download": "Download fehlgeschlagen. Bitte versuchen Sie es später erneut."
   }
 }

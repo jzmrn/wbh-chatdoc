@@ -56,9 +56,9 @@ def sidebar() -> rx.Component:
     )
 
 
-def modal(trigger) -> rx.Component:
+def modal() -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(trigger),
+        rx.dialog.trigger(rx.button(rx.icon(tag="message-square-plus"))),
         rx.dialog.content(
             rx.hstack(
                 rx.input(
@@ -119,15 +119,20 @@ def message(qa: QA) -> rx.Component:
 
 
 def display_ref(docx: Chunk) -> rx.Component:
-    return rx.hover_card.root(
-        rx.hover_card.trigger(
-            rx.link(
-                docx.metadata["source"],
-                color_scheme="blue",
-                underline="always",
+    return rx.hstack(
+        rx.hover_card.root(
+            rx.hover_card.trigger(
+                rx.link(
+                    docx.metadata["source"],
+                    color_scheme="blue",
+                    underline="always",
+                    on_click=lambda: State.download_file(
+                        docx.metadata["document_id"], docx.metadata["source"]
+                    ),
+                ),
             ),
+            rx.hover_card.content(rx.text(docx.page_content)),
         ),
-        rx.hover_card.content(rx.text(docx.page_content)),
     )
 
 
@@ -192,7 +197,7 @@ def chat_view() -> rx.Component:
                 rx.vstack(
                     header(
                         State.current_chat.name,
-                        modal(rx.button(State.strings["chat.new"])),
+                        modal(),
                         rx.button(
                             rx.icon(
                                 tag="trash",
