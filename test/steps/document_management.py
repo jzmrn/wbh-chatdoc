@@ -77,6 +77,14 @@ def step_impl(context):
     raise NotImplementedError(u'STEP: When the user deletes a document')
 
 
+@when("the user uploads a document in pdf format greater than 10MB")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: When the user uploads a document in pdf format greater than 10MB')
+
+
 @then("the document is successfully added to the system")
 def step_impl(context):
     """

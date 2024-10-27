@@ -11,6 +11,11 @@ Feature: Document Upload
     When the user uploads a document in pdf format
     Then the document is successfully added to the system
 
+  Scenario: Upload a valid document greater than 10MB
+    Given the user is in the document upload section
+    When the user uploads a document in pdf format greater than 10MB
+    Then the document is not uploaded
+
   Scenario: Upload an invalid document format
     Given the user is in the document upload section
     When the user attempts to upload a document in an unsupported format

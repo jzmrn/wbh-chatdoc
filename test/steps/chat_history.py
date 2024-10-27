@@ -10,6 +10,13 @@ def step_impl(context):
     """
     raise NotImplementedError(u'STEP: Given the user has a previous chat history')
 
+@given("the user has a previous chat history greater than (?P<char_count>\d+) characters")
+def step_impl(context, char_count):
+    """
+    :type context: behave.runner.Context
+    :type char_count: int
+    """
+    raise NotImplementedError(f'STEP: Given the user has a previous chat history greater than {char_count} characters')
 
 @when("the user selects a previous chat")
 def step_impl(context):
@@ -33,3 +40,19 @@ def step_impl(context):
     :type context: behave.runner.Context
     """
     raise NotImplementedError(u'STEP: And the user can continue the conversation if needed')
+
+
+@when("the user selects the large chat")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: When the user selects the large chat')
+
+
+@then("the user can't continue the conversation")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: And the user can\'t continue the conversation')

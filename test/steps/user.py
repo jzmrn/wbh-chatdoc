@@ -9,7 +9,7 @@ def step_impl(context):
     """
     raise NotImplementedError(u'STEP: Given the user is logged in')
 
-@given("the user attempts to access the application")
+@given("the unauthorized user attempts to access the application")
 def step_impl(context):
     """
     :type context: behave.runner.Context

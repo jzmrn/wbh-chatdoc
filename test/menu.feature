@@ -10,6 +10,6 @@ Feature: Menu
     When the user clicks on the document management menu item
     Then the user is navigated to the document management section
 
-  Scenario: Access document management section
+  Scenario: Access chat section
     When the user clicks on the chat menu item
     Then the user is navigated to the chat section

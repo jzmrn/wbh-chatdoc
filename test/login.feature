@@ -4,7 +4,7 @@ Feature: User Login via Microsoft Entra ID
   I want to log in through Microsoft Entra ID
 
   Scenario: Redirect unauthorized user to login page
-    Given the user attempts to access the application
+    Given the unauthorized user attempts to access the application
     Then the user is redirected to the Microsoft Entra ID login page
 
   Scenario: Successful login
