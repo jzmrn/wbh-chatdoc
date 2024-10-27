@@ -29,3 +29,11 @@ def step_impl(context, answer, link):
     :type link: str
     """
     raise NotImplementedError(f'STEP: Then the answer contains {answer} and a link to {link}')
+
+
+@when("the user starts a new chat")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: When the user starts a new chat')

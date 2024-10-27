@@ -79,3 +79,11 @@ def step_impl(context):
     :type context: behave.runner.Context
     """
     raise NotImplementedError(u'STEP: And the user\'s authentication token is invalid')
+
+
+@step("a new user is logged in")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: And a new user is logged in')

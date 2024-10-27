@@ -139,3 +139,20 @@ def step_impl(context):
     :type context: behave.runner.Context
     """
     raise NotImplementedError(u'STEP: Then the document is removed from the document list')
+
+
+@then("the user sees the documents (?P<document_name>.+)")
+def step_impl(context, document_name):
+    """
+    :param document_name:
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: Then the user sees the documents {document_name}')
+
+
+@step("the user does not see the documents (?P<document_name>.+)")
+def step_impl(context):
+    """
+    :type context: behave.runner.Context
+    """
+    raise NotImplementedError(u'STEP: And the user does not see the documents {document_name}')
