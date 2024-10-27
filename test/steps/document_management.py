@@ -37,12 +37,12 @@ def step_impl(context):
     raise NotImplementedError(u'STEP: And no other documents are uploaded')
 
 
-@when("the user uploads a document in pdf format")
+@when("the user uploads a document in (?P<format>.+) format")
 def step_impl(context):
     """
     :type context: behave.runner.Context
     """
-    raise NotImplementedError(u'STEP: When the user uploads a document in pdf format')
+    raise NotImplementedError(u'STEP: When the user uploads a document in {format} format')
 
 
 @when("the user attempts to upload a document in an unsupported format")

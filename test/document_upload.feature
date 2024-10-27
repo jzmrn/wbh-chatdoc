@@ -6,10 +6,15 @@ Feature: Document Upload
   Background:
     Given the user is logged in
 
-  Scenario: Upload a valid document
+  Scenario Outline: Upload a valid document
     Given the user is in the document upload section
-    When the user uploads a document in pdf format
+    When the user uploads a document in <format> format
     Then the document is successfully added to the system
+
+    Examples:
+      | format |
+      | pdf    |
+      | text   |
 
   Scenario: Upload a valid document greater than 10MB
     Given the user is in the document upload section
