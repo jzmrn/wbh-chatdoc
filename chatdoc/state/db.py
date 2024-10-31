@@ -79,7 +79,7 @@ class DatabaseHandler:
             placeholders = sql.SQL(", ").join(sql.Placeholder() * len(roles))
             query = sql.SQL(
                 """
-                SELECT id, name, role, created_at
+                SELECT id, name, role, timestamp
                 FROM documents
                 WHERE role IN ({values})
                 """
