@@ -46,7 +46,6 @@ STOPSIGNAL SIGKILL
 EXPOSE $PORT
 
 # Apply migrations before starting the backend.
-CMD [ -d alembic ] \
-    caddy start && \
+CMD caddy start && \
     redis-server --daemonize yes && \
-    exec reflex run --env prod --backend-only
+    exec poetry run reflex run --env prod --backend-only
