@@ -1,0 +1,48 @@
+name: release
+
+on:
+  push:
+    # branches:
+    #   - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install node
+      uses: actions/setup-node@v3.8.1
+      with:
+        node-version: 18.x
+
+    - name: install semantic release
+      run: |
+        npm install --save-dev \
+          @semantic-release/changelog \
+          @codedependant/semantic-release-docker \
+          semantic-release@22 \
+          @semantic-release/github
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    - name: install poetry
+      uses: abatilo/actions-poetry@v2
+      with:
+        poetry-version: 1.8.4
+
+    - name: install dependencies
+      run: poetry install
+
+    - name: release
+      run: npx semantic-release
+      env:
+        DOCKER_REGISTRY_USER: ${{ vars.DOCKER_USER }}
+        DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_SECRET }}
