@@ -25,7 +25,7 @@ jobs:
         npm install --save-dev \
           @semantic-release/changelog \
           @codedependant/semantic-release-docker \
-          semantic-release@22 \
+          semantic-release \
           @semantic-release/github
 
     - uses: actions/setup-python@v5
