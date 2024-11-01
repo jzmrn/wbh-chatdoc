@@ -61,37 +61,38 @@ class State(rx.State):
     # Whether we are processing the question.
     processing: bool = False
 
-    _access_token: str = ""
-    _flow: dict
-    _token: Dict[str, str] = {}
+    access_token: str = ""
+    flow: dict
+    token: Dict[str, str] = {}
 
     #########
     # Login #
     #########
 
     def redirect_sso(self) -> rx.Component:
-        self._flow = Sso.get_instance().app.initiate_auth_code_flow(
+        self.flow = Sso.get_instance().app.initiate_auth_code_flow(
             scopes=[], redirect_uri=f"{self.router.page.host}/callback"
         )
-        return rx.redirect(self._flow["auth_uri"])
+        print(self.flow)
+        return rx.redirect(self.flow["auth_uri"])
 
     def require_auth(self):
         # TODO: validate token
-        if not self._token:
+        if not self.token:
             return self.redirect_sso()
 
     @rx.var(cache=True)
     def check_auth(self) -> bool:
         # TODO: validate token
-        return True if self._token else False
+        return True if self.token else False
 
     @rx.var(cache=True)
     def user_name(self) -> str:
-        return self._token.get("name")
+        return self.token.get("name")
 
     @rx.var(cache=True)
     def preferred_username(self) -> str:
-        return self._token.get("preferred_username")
+        return self.token.get("preferred_username")
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
@@ -99,13 +100,14 @@ class State(rx.State):
         return ["Privat", "Support", "chatdoc", "Public"]
 
     def logout(self):
-        self._token = {}
+        self.token = {}
         # This will logout the user from the SSO provider
         # return rx.redirect(authority + "/oauth2/v2.0/logout")
         return rx.redirect(self.router.page.host)
 
     def callback(self):
         query_components = self.router.page.params
+        print(query_components)
 
         auth_response = {
             "code": query_components.get("code"),
@@ -115,16 +117,21 @@ class State(rx.State):
             "client-secret": os.environ.get("AZURE_CLIENT_SECRET"),
         }
 
-        try:
-            result = Sso.get_instance().app.acquire_token_by_auth_code_flow(
-                self._flow, auth_response, scopes=[]
-            )
-        except Exception:
-            return rx.toast("error something went wrong")
+        print(auth_response)
 
-        self._access_token = result.get("access_token")
-        self._token = result.get("id_token_claims")
-        return rx.redirect("/chat")
+        try:
+            print(self.flow)
+            result = Sso.get_instance().app.acquire_token_by_auth_code_flow(
+                self.flow, auth_response, scopes=[]
+            )
+            self.access_token = result.get("access_token")
+            self.token = result.get("id_token_claims")
+            return rx.redirect("/chat")
+
+        except Exception as e:
+            print(e)
+            yield rx.toast("error something went wrong")
+            return rx.redirect("/login")
 
     ############
     # Language #
