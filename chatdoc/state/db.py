@@ -43,7 +43,7 @@ class DatabaseHandler:
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     role VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
