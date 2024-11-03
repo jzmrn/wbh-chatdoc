@@ -7,10 +7,6 @@ plugins:
     - "@semantic-release/release-notes-generator"
     - "@semantic-release/github"
     - - "@codedependant/semantic-release-docker"
-      - dockerImage: jzmrn/chatdoc-frontend
-        dockerFile: Dockerfile.web
-        dockerBuildFlags:
-          platform: linux/amd64
       - dockerImage: jzmrn/chatdoc-backend
         dockerFile: Dockerfile
         dockerBuildFlags:
