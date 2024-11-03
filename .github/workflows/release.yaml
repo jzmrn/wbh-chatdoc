@@ -28,18 +28,6 @@ jobs:
           semantic-release \
           @semantic-release/github
 
-    # - uses: actions/setup-python@v5
-    #   with:
-    #     python-version: 3.12
-
-    # - name: install poetry
-    #   uses: abatilo/actions-poetry@v2
-    #   with:
-    #     poetry-version: 1.8.4
-
-    # - name: install dependencies
-    #   run: poetry install
-
     - name: release
       run: npx semantic-release
       env:
