@@ -63,7 +63,7 @@ class DatabaseHandler:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO documents (name, role, created_at)
+                INSERT INTO documents (name, role, timestamp)
                 VALUES (%s, %s, CURRENT_TIMESTAMP)
                 RETURNING id
                 """,
