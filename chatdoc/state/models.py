@@ -4,7 +4,7 @@ import reflex as rx
 
 
 class Chunk(rx.Base):
-    """A document with metadata."""
+    """A small piece of a document."""
 
     id: str
     page_content: str
