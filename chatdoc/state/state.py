@@ -124,6 +124,7 @@ class State(rx.State):
             result = Sso.get_instance().app.acquire_token_by_auth_code_flow(
                 self.flow, auth_response, scopes=[]
             )
+            print(result)
             self.access_token = result.get("access_token")
             self.token = result.get("id_token_claims")
             return rx.redirect("/chat")
