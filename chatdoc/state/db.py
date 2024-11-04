@@ -3,7 +3,6 @@ import json
 from json import JSONEncoder
 
 import psycopg2
-import reflex as rx
 from psycopg2 import sql
 
 from .models import QA, Chat, Chunk, Document
