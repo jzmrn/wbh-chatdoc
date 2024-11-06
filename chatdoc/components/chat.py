@@ -83,6 +83,11 @@ def modal() -> rx.Component:
 def message(qa: QA) -> rx.Component:
     return rx.box(
         rx.box(
+            rx.text(qa.timestamp, from_now=True),
+            margin_top="1em",
+            text_align="center",
+        ),
+        rx.box(
             rx.markdown(
                 qa.question,
                 background_color=rx.color("mauve", 4),

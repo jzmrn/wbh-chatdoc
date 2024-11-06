@@ -320,7 +320,7 @@ class State(rx.State):
                 doc.id = document_id
                 self.cached_documents[doc.id] = doc
 
-                path = f"./{dir}/{document_id}"
+                path = f"{dir}/{document_id}"
                 with open(path, "wb") as f:
                     content = await file.read()
                     f.write(content)
