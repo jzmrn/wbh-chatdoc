@@ -33,8 +33,7 @@ def header(title: str, *items: rx.Component) -> rx.Component:
         ),
         position="fixed",
         top="5em",
-        width="100%",
-        max_width="50em",
+        width="60%",
         align_self="center",
         overflow="hidden",
     )

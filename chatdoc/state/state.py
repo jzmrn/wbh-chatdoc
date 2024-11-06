@@ -201,8 +201,8 @@ class State(rx.State):
         )
         chat.id = Database.get_instance().db.store_chat(chat)
 
-        self.creating_chat = False
         self.cached_chats[chat.id] = chat
+        self.creating_chat = False
 
     def delete_chat(self):
         id = self.current_chat.id
@@ -351,9 +351,10 @@ class State(rx.State):
             self.progress = 100
             self.uploading = False
 
-        except Exception:
+        except Exception as e:
             self.uploading = False
             self.progress = 0
+            print(e)
             yield rx.toast.error(self.strings["error.upload"], position="bottom-center")
 
     # Upload itself is only the first step of the process (20%)

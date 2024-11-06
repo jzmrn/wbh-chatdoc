@@ -157,7 +157,7 @@ def action_bar() -> rx.Component:
                             ),
                             placeholder=State.strings["chat.input"],
                             id="question",
-                            width=["15em", "20em", "45em", "50em", "50em", "50em"],
+                            width=["10em", "15em", "25em", "35em", "40em", "40em"],
                         ),
                         rx.button(
                             rx.cond(
@@ -211,8 +211,8 @@ def chat_view() -> rx.Component:
                     action_bar(),
                 ),
                 flex="1",
-                padding_left="16em",
-                padding_top="4em",
+                margin_left="16em",
+                margin_top="4em",
             ),
         ),
         background_color=rx.color("mauve", 1),
