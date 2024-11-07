@@ -5,6 +5,7 @@ from chatdoc.components.common import content, header
 from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
 
+from ..constants import DATE_TIME
 from .loading import loading_icon
 from .navbar import navbar
 
@@ -62,7 +63,7 @@ def modal() -> rx.Component:
         rx.dialog.content(
             rx.hstack(
                 rx.input(
-                    placeholder="Type something...",
+                    placeholder=State.strings["chat.placeholder"],
                     on_blur=State.set_new_chat_name,
                     width=["15em", "20em", "30em", "30em", "30em", "30em"],
                 ),
@@ -83,7 +84,7 @@ def modal() -> rx.Component:
 def message(qa: QA) -> rx.Component:
     return rx.box(
         rx.box(
-            rx.text(qa.timestamp, from_now=True),
+            rx.moment(qa.timestamp, format=DATE_TIME),
             margin_top="1em",
             text_align="center",
         ),
@@ -128,7 +129,7 @@ def display_ref(docx: Chunk) -> rx.Component:
         rx.hover_card.root(
             rx.hover_card.trigger(
                 rx.link(
-                    docx.metadata["source"],
+                    f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
                     color_scheme="blue",
                     underline="always",
                     on_click=lambda: State.download_file(

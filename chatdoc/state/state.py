@@ -4,14 +4,21 @@ import pathlib
 from typing import Any, Dict
 
 import reflex as rx
+from langchain.chains import (
+    create_history_aware_retriever,
+    create_retrieval_chain,
+)
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema.document import Document as DocEntry
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders.pdf import PyPDFLoader
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai import ChatOpenAI
 
 from chatdoc.constants import LANGKEYS, OPTION_ENGLISH, OPTION_GERMAN, UPLOAD_ID
 
 from .models import QA, Chat, Chunk, Document
-from .sigletons import Chain, Database, Sso, Vector
+from .sigletons import Database, Sso, Vector
 
 
 def key_recursion(t: dict[str, Any], prefix: str = "") -> dict[str, Any]:
@@ -96,8 +103,16 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
-        # TODO: do not hardcode but mock user roles
-        return ["Privat", "Support", "chatdoc", "Public"]
+        # TODO: do not hardcode user roles
+        match self.user_name:
+            case "Jan Zimmermann":
+                return ["Privat", "Support", "chatdoc"]
+            case "Max Krischker":
+                return ["Privat", "Management", "chatdoc"]
+            case "Daniel Keiss":
+                return ["Privat", "Management", "Support"]
+            case _:
+                return ["Privat", "Public"]
 
     def logout(self):
         self.token = {}
@@ -107,7 +122,6 @@ class State(rx.State):
 
     def callback(self):
         query_components = self.router.page.params
-        print(query_components)
 
         auth_response = {
             "code": query_components.get("code"),
@@ -117,16 +131,19 @@ class State(rx.State):
             "client-secret": os.environ.get("AZURE_CLIENT_SECRET"),
         }
 
-        print(auth_response)
-
         try:
-            print(self.flow)
             result = Sso.get_instance().app.acquire_token_by_auth_code_flow(
                 self.flow, auth_response, scopes=[]
             )
-            print(result)
-            self.access_token = result.get("access_token")
-            self.token = result.get("id_token_claims")
+
+            access_token = result.get("access_token")
+            token = result.get("id_token_claims")
+
+            if not token or not access_token:
+                return rx.redirect("/login")
+
+            self.token = token
+            self.access_token = access_token
             return rx.redirect("/chat")
 
         except Exception as e:
@@ -188,7 +205,7 @@ class State(rx.State):
             )
             self.cached_chats = {chat.id: chat for chat in chats}
 
-        return list(self.cached_chats.values())
+        return list(self.cached_chats.values())[::-1]
 
     def create_chat(self, userid: str):
         self.creating_chat = True
@@ -202,6 +219,7 @@ class State(rx.State):
         chat.id = Database.get_instance().db.store_chat(chat)
 
         self.cached_chats[chat.id] = chat
+        self.selected_chat = chat.id
         self.creating_chat = False
 
     def delete_chat(self):
@@ -245,9 +263,63 @@ class State(rx.State):
         # Remove the last mock answer.
         messages = messages[:-1]
 
-        for item in Chain.get_instance().chain.stream(
-            {"input": question, "chat_history": messages}
-        ):
+        llm = ChatOpenAI(
+            model_name="gpt-3.5-turbo",
+            temperature=0,
+            api_key=os.environ["OPENAI_API_KEY"],
+        )
+
+        # Contextualize question
+        contextualize_q_system_prompt = (
+            "Given a chat history and the latest user question "
+            "which might reference context in the chat history, "
+            "formulate a standalone question which can be understood "
+            "without the chat history. Do NOT answer the question, just "
+            "reformulate it if needed and otherwise return it as is."
+        )
+        contextualize_q_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", contextualize_q_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        history_aware_retriever = create_history_aware_retriever(
+            llm,
+            Vector.get_instance().db.as_retriever(
+                search_kwargs={
+                    "k": 2,
+                    "filter": {"role": {"$in": self.user_roles}},
+                },
+            ),
+            contextualize_q_prompt,
+        )
+
+        # Answer question
+        qa_system_prompt = (
+            "You are an assistant called chatdoc for question-answering tasks."
+            "Use the following pieces of retrieved context to answer the "
+            "question. If you don't know the answer, just say that you "
+            "don't know. Use three sentences maximum and keep the answer "
+            "concise."
+            "Context: {context}"
+        )
+        qa_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+        # Below we use create_stuff_documents_chain to feed all retrieved context
+        # into the LLM. Note that we can also use StuffDocumentsChain and other
+        # instances of BaseCombineDocumentsChain.
+        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+        chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+
+        for item in chain.stream({"input": question, "chat_history": messages}):
             answer = item.get("answer", "")
             self.cached_chats[self.selected_chat].messages[-1].answer += answer
             yield
@@ -257,7 +329,17 @@ class State(rx.State):
                 continue
 
             self.cached_chats[self.selected_chat].messages[-1].context = [
-                Chunk(id=d.id, page_content=d.page_content, metadata=d.metadata)
+                Chunk(
+                    id=d.id,
+                    page_content=d.page_content,
+                    metadata={
+                        **d.metadata,
+                        **{
+                            "page": int(d.metadata["page"] if d.metadata["page"] else 0)
+                            + 1
+                        },
+                    },
+                )
                 for d in context
             ]
             yield
@@ -369,10 +451,8 @@ class State(rx.State):
 
     def download_file(self, fid: int, filename: str):
         try:
-            print("Downloading file")
-            id = str(fid).split(".")[0]
-            path = f"{dir}/{id}"
-            print(f"Downloading file from: {path}")
+            dir = os.getenv("STORAGE_MOUNT")
+            path = f"{dir}/{fid}"
             with open(path, "rb") as f:
                 data = f.read()
 

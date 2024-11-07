@@ -7,3 +7,6 @@ LANGKEYS = {
     OPTION_GERMAN: "de",
     OPTION_ENGLISH: "en",
 }
+
+DATE = "DD.MM.YYYY"
+DATE_TIME = "DD.MM.YYYY HH:mm"

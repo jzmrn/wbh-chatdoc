@@ -8,7 +8,7 @@ class Chunk(rx.Base):
 
     id: str
     page_content: str
-    metadata: dict[str, str]
+    metadata: dict[str, str | int]
 
 
 class Document(rx.Base):

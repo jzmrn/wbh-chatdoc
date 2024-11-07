@@ -1,8 +1,8 @@
 import reflex as rx
 
-from chatdoc.constants import UPLOAD_ID
 from chatdoc.state import State
 
+from ..constants import DATE, UPLOAD_ID
 from .common import content, header
 from .navbar import navbar
 
@@ -92,7 +92,7 @@ def list_docs() -> rx.Component:
                                     white_space="nowrap",
                                 ),
                                 rx.hstack(
-                                    rx.badge(rx.moment(doc.timestamp, from_now=True)),
+                                    rx.badge(rx.moment(doc.timestamp, format=DATE)),
                                     rx.badge(
                                         doc.role,
                                         variant="soft",
@@ -101,6 +101,7 @@ def list_docs() -> rx.Component:
                                     rx.button(
                                         rx.icon(
                                             tag="download",
+                                            size=16,
                                             color=rx.color("mauve", 12),
                                         ),
                                         background_color=rx.color("mauve", 6),
@@ -113,6 +114,7 @@ def list_docs() -> rx.Component:
                                     rx.button(
                                         rx.icon(
                                             tag="trash",
+                                            size=16,
                                             color=rx.color("mauve", 12),
                                         ),
                                         background_color=rx.color("mauve", 6),
