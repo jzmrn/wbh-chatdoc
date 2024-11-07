@@ -321,6 +321,7 @@ class State(rx.State):
                 self.cached_documents[doc.id] = doc
 
                 path = f"{dir}/{document_id}"
+                print(f"Uploading fole to: {path}")
                 with open(path, "wb") as f:
                     content = await file.read()
                     f.write(content)
@@ -368,8 +369,11 @@ class State(rx.State):
 
     def download_file(self, fid: int, filename: str):
         try:
+            print("Downloading file")
             id = str(fid).split(".")[0]
-            with open(f"tmp/{id}", "rb") as f:
+            path = f"{dir}/{id}"
+            print(f"Downloading file from: {path}")
+            with open(path, "rb") as f:
                 data = f.read()
 
             return rx.download(
