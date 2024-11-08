@@ -60,7 +60,7 @@ def sidebar() -> rx.Component:
         rx.vstack(
             rx.heading(State.strings["chat.header"]),
             rx.divider(),
-            rx.scroll_area(sidebargroups(State.chats), scrollbars="vertical"),
+            sidebargroups(State.chats),
             align_items="stretch",
             width="100%",
         ),
