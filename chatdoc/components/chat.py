@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Iterable
+
 import reflex as rx
 import reflex_chakra as rc
 
@@ -18,30 +21,46 @@ message_style = dict(
 
 
 def sidebar_chat(chat: Chat) -> rx.Component:
-    return rx.hstack(
-        rx.button(
-            chat.name,
-            on_click=lambda: State.set_chat(chat.id),
-            width="100%",
-            variant="surface",
-            text_overflow="ellipsis",
-            overflow="hidden",
-            white_space="nowrap",
-        ),
+    return rx.button(
+        chat.name,
+        on_click=lambda: State.set_chat(chat.id),
         width="100%",
+        variant="surface",
+        text_overflow="ellipsis",
+        overflow="hidden",
+        white_space="nowrap",
+    )
+
+
+def sidebargroups(chats: dict[str, Iterable[Chat]]) -> rx.Component:
+    return rx.vstack(
+        rx.foreach(
+            chats.keys(),
+            lambda chat: rx.vstack(
+                rx.heading(
+                    rx.cond(
+                        chat == datetime.now().strftime("%d.%m.%Y"),
+                        State.strings["chat.today"],
+                        chat,
+                    ),
+                    size="4",
+                    color=rx.color("mauve", 12),
+                ),
+                rx.foreach(chats[chat], sidebar_chat),
+                spacing="2",
+                width="100%",
+            ),
+        ),
+        spacing="6",
     )
 
 
 def sidebar() -> rx.Component:
     return rx.vstack(
         rx.vstack(
-            rx.heading(State.strings["chat.header"], color=rx.color("mauve", 11)),
+            rx.heading(State.strings["chat.header"]),
             rx.divider(),
-            rx.cond(
-                State.creating_chat,
-                rx.skeleton(sidebar_chat(Chat(name="...", userid="..."))),
-            ),
-            rx.foreach(State.chats, lambda chat: sidebar_chat(chat)),
+            rx.scroll_area(sidebargroups(State.chats), scrollbars="vertical"),
             align_items="stretch",
             width="100%",
         ),
@@ -122,6 +141,7 @@ def message(qa: QA) -> rx.Component:
             text_align="left",
             margin_top="1em",
             **message_style,
+            id=rx.cond(qa == State.current_chat.messages[-1], "latest", "any"),
         ),
         width="100%",
     )

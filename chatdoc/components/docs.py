@@ -22,7 +22,7 @@ def upload_form():
                     id=UPLOAD_ID,
                     padding="3em",
                     width="40em",
-                    accept={"application/pdf": [".pdf"]},
+                    accept={"application/pdf": [".pdf", ".docx"]},
                     max_files=5,
                     max_size=10 * 1024 * 1024,
                 ),
