@@ -11,6 +11,7 @@
     "logout": "Sign out"
   },
   "chat": {
+    "today": "Today",
     "header": "Chat",
     "input": "Ask a question...",
     "send": "Send",

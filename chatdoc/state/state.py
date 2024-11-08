@@ -278,10 +278,11 @@ class State(rx.State):
         # Clear the input and start the processing.
         self.processing = True
         yield
-        yield rx.scroll_to("latest")
+
         # Add the question to the list of questions.
         qa = QA(question=question, answer="", context=[])
         self.current_chat.messages.append(qa)
+        yield rx.scroll_to("latest")
 
         # Build the messages.
         messages = []

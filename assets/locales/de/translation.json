@@ -11,6 +11,7 @@
     "logout": "Abmelden"
   },
   "chat": {
+    "today": "Heute",
     "header": "Chats",
     "input": "Stelle eine Frage...",
     "send": "Senden",
