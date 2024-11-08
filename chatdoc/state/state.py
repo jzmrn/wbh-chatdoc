@@ -207,13 +207,21 @@ class State(rx.State):
 
         return list(self.cached_chats.values())[::-1]
 
-    def create_chat(self, userid: str):
+    def refresh_chats(self):
+        chats = Database.get_instance().db.get_chats_by_userid(self.preferred_username)
+        self.selected_chat = None
+        self.cached_chats = {chat.id: chat for chat in chats}
+
+    def create_chat(self):
+        if self.new_chat_name == "":
+            return rx.toast.error(self.strings["chat.error"], position="bottom-center")
+
         self.creating_chat = True
         yield
 
         chat = chat = Chat(
             name=self.new_chat_name,
-            userid=f"{userid}",
+            userid=f"{self.preferred_username}",
             messages=[],
         )
         chat.id = Database.get_instance().db.store_chat(chat)

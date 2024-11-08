@@ -68,8 +68,18 @@ def upload_form():
 
 def list_docs() -> rx.Component:
     return rx.vstack(
-        rx.heading(State.strings["docs.title"]),
         rx.box(
+            rx.hstack(
+                rx.heading(State.strings["docs.title"]),
+                rx.button(
+                    rx.icon(
+                        tag="refresh-cw",
+                        size=16,
+                    ),
+                    on_click=State.refresh_chats,
+                ),
+                justify_content="space-between",
+            ),
             rx.cond(
                 State.documents_empty,
                 rx.box(

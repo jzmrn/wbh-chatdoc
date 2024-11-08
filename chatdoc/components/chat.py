@@ -61,21 +61,20 @@ def modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon(tag="message-square-plus"))),
         rx.dialog.content(
-            rx.hstack(
+            rx.dialog.title(State.strings["chat.title"]),
+            rx.flex(
                 rx.input(
                     placeholder=State.strings["chat.placeholder"],
                     on_blur=State.set_new_chat_name,
-                    width=["15em", "20em", "30em", "30em", "30em", "30em"],
                 ),
                 rx.dialog.close(
                     rx.button(
                         State.strings["chat.create"],
-                        on_click=lambda: State.create_chat(State.preferred_username),
+                        on_click=State.create_chat,
                     ),
                 ),
-                background_color=rx.color("mauve", 1),
-                spacing="2",
-                width="100%",
+                direction="column",
+                spacing="4",
             ),
         ),
     )
@@ -101,16 +100,20 @@ def message(qa: QA) -> rx.Component:
         rx.box(
             rx.vstack(
                 rx.cond(
-                    qa.answer == "",
+                    State.processing & qa.answer == "",
                     rx.image(
                         src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
                         width="2em",
                         margin="1em",
                     ),
-                    rx.vstack(
-                        rx.markdown(qa.answer),
-                        rx.foreach(qa.context, display_ref),
-                        padding_bottom="1em",
+                    rx.cond(
+                        qa.answer == "",
+                        rx.text(State.strings["chat.empty"]),
+                        rx.vstack(
+                            rx.markdown(qa.answer),
+                            rx.foreach(qa.context, display_ref),
+                            padding_bottom="1em",
+                        ),
                     ),
                 ),
             ),
@@ -158,9 +161,10 @@ def action_bar() -> rx.Component:
                             rx.input.slot(
                                 rx.tooltip(
                                     rx.icon("info", size=18),
-                                    content="Enter a question to get a response.",
+                                    content=State.strings["chat.info"],
                                 )
                             ),
+                            max_length=1000,
                             placeholder=State.strings["chat.input"],
                             id="question",
                             width=["10em", "15em", "25em", "35em", "40em", "40em"],

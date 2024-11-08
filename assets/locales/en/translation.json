@@ -14,7 +14,14 @@
     "header": "Chat",
     "input": "Ask a question...",
     "send": "Send",
-    "create": "Create a new Chat"
+    "create": "Create",
+    "title": "Create a new Chat",
+    "placeholder": "Chat name...",
+    "page": "Page",
+    "cancel": "Cancel",
+    "error": "Chat name cannot be empty.",
+    "info": "Ask a question with a maximum of 1000 characters.",
+    "empty": "Error generating response. Please try again later."
   },
   "docs": {
     "header": "Docs",
