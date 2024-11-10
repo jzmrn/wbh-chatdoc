@@ -6,13 +6,13 @@ plugins:
     - "@semantic-release/changelog"
     - "@semantic-release/release-notes-generator"
     - - "@codedependant/semantic-release-docker"
-      - dockerImage: jzmrn/chatdoc-backend
-        dockerFile: Dockerfile
+      - dockerImage: jzmrn/chatdoc-frontend
+        dockerFile: Dockerfile.web
         dockerBuildFlags:
           platform: linux/amd64
     - - "@codedependant/semantic-release-docker"
-      - dockerImage: jzmrn/chatdoc-frontend
-        dockerFile: Dockerfile.web
+      - dockerImage: jzmrn/chatdoc-backend
+        dockerFile: Dockerfile
         dockerBuildFlags:
           platform: linux/amd64
     - "@semantic-release/github"
