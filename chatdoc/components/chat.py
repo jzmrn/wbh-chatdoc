@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Iterable
+
 import reflex as rx
 import reflex_chakra as rc
 
@@ -5,6 +8,7 @@ from chatdoc.components.common import content, header
 from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
 
+from ..constants import DATE_TIME
 from .loading import loading_icon
 from .navbar import navbar
 
@@ -17,30 +21,46 @@ message_style = dict(
 
 
 def sidebar_chat(chat: Chat) -> rx.Component:
-    return rx.hstack(
-        rx.button(
-            chat.name,
-            on_click=lambda: State.set_chat(chat.id),
-            width="100%",
-            variant="surface",
-            text_overflow="ellipsis",
-            overflow="hidden",
-            white_space="nowrap",
-        ),
+    return rx.button(
+        chat.name,
+        on_click=lambda: State.set_chat(chat.id),
         width="100%",
+        variant="surface",
+        text_overflow="ellipsis",
+        overflow="hidden",
+        white_space="nowrap",
+    )
+
+
+def sidebargroups(chats: dict[str, Iterable[Chat]]) -> rx.Component:
+    return rx.vstack(
+        rx.foreach(
+            chats.keys(),
+            lambda chat: rx.vstack(
+                rx.heading(
+                    rx.cond(
+                        chat == datetime.now().strftime("%d.%m.%Y"),
+                        State.strings["chat.today"],
+                        chat,
+                    ),
+                    size="2",
+                    color=rx.color("mauve", 12),
+                ),
+                rx.foreach(chats[chat], sidebar_chat),
+                spacing="2",
+                width="100%",
+            ),
+        ),
+        spacing="6",
     )
 
 
 def sidebar() -> rx.Component:
     return rx.vstack(
         rx.vstack(
-            rx.heading(State.strings["chat.header"], color=rx.color("mauve", 11)),
+            rx.heading(State.strings["chat.header"]),
             rx.divider(),
-            rx.cond(
-                State.creating_chat,
-                rx.skeleton(sidebar_chat(Chat(name="...", userid="..."))),
-            ),
-            rx.foreach(State.chats, lambda chat: sidebar_chat(chat)),
+            sidebargroups(State.chats),
             align_items="stretch",
             width="100%",
         ),
@@ -60,21 +80,23 @@ def modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon(tag="message-square-plus"))),
         rx.dialog.content(
-            rx.hstack(
+            rx.dialog.title(State.strings["chat.title"]),
+            rx.flex(
                 rx.input(
-                    placeholder="Type something...",
+                    placeholder=State.strings["chat.placeholder"],
                     on_blur=State.set_new_chat_name,
-                    width=["15em", "20em", "30em", "30em", "30em", "30em"],
                 ),
                 rx.dialog.close(
-                    rx.button(
-                        State.strings["chat.create"],
-                        on_click=lambda: State.create_chat(State.preferred_username),
-                    ),
+                    rx.flex(
+                        rx.button(
+                            State.strings["chat.create"],
+                            on_click=State.create_chat,
+                        ),
+                        justify="end",
+                    )
                 ),
-                background_color=rx.color("mauve", 1),
-                spacing="2",
-                width="100%",
+                direction="column",
+                spacing="4",
             ),
         ),
     )
@@ -82,6 +104,11 @@ def modal() -> rx.Component:
 
 def message(qa: QA) -> rx.Component:
     return rx.box(
+        rx.box(
+            rx.moment(qa.timestamp, format=DATE_TIME),
+            margin_top="1em",
+            text_align="center",
+        ),
         rx.box(
             rx.markdown(
                 qa.question,
@@ -96,10 +123,14 @@ def message(qa: QA) -> rx.Component:
             rx.vstack(
                 rx.cond(
                     qa.answer == "",
-                    rx.image(
-                        src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
-                        width="2em",
-                        margin="1em",
+                    rx.cond(
+                        State.processing & qa == State.current_chat.messages[-1],
+                        rx.image(
+                            src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
+                            width="2em",
+                            margin="1em",
+                        ),
+                        rx.markdown(State.strings["chat.empty"]),
                     ),
                     rx.vstack(
                         rx.markdown(qa.answer),
@@ -113,6 +144,7 @@ def message(qa: QA) -> rx.Component:
             text_align="left",
             margin_top="1em",
             **message_style,
+            id=rx.cond(qa == State.current_chat.messages[-1], "latest", "any"),
         ),
         width="100%",
     )
@@ -123,7 +155,11 @@ def display_ref(docx: Chunk) -> rx.Component:
         rx.hover_card.root(
             rx.hover_card.trigger(
                 rx.link(
-                    docx.metadata["source"],
+                    rx.cond(
+                        docx.metadata.contains("page"),
+                        f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
+                        docx.metadata["source"],
+                    ),
                     color_scheme="blue",
                     underline="always",
                     on_click=lambda: State.download_file(
@@ -152,12 +188,13 @@ def action_bar() -> rx.Component:
                             rx.input.slot(
                                 rx.tooltip(
                                     rx.icon("info", size=18),
-                                    content="Enter a question to get a response.",
+                                    content=State.strings["chat.info"],
                                 )
                             ),
+                            max_length=1000,
                             placeholder=State.strings["chat.input"],
                             id="question",
-                            width=["15em", "20em", "45em", "50em", "50em", "50em"],
+                            width=["10em", "15em", "25em", "35em", "40em", "40em"],
                         ),
                         rx.button(
                             rx.cond(
@@ -211,8 +248,8 @@ def chat_view() -> rx.Component:
                     action_bar(),
                 ),
                 flex="1",
-                padding_left="16em",
-                padding_top="4em",
+                margin_left="16em",
+                margin_top="4em",
             ),
         ),
         background_color=rx.color("mauve", 1),

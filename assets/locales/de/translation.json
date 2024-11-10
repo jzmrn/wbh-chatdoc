@@ -11,10 +11,18 @@
     "logout": "Abmelden"
   },
   "chat": {
+    "today": "Heute",
     "header": "Chats",
     "input": "Stelle eine Frage...",
     "send": "Senden",
-    "create": "Neuen Chat erstellen"
+    "create": "Erstellen",
+    "title": "Neuen Chat erstellen",
+    "placeholder": "Name des Chats...",
+    "page": "Seite",
+    "cancel": "Abbrechen",
+    "error": "Der Name des Chats darf nicht leer sein.",
+    "info": "Stellen Sie eine Frage mit maximal 1000 Zeichen.",
+    "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut."
   },
   "docs": {
     "header": "Docs",
@@ -24,7 +32,9 @@
     "description": "Dateien hier ablegen oder klicken um Dateien auszuwählen",
     "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
     "empty": "Keine Dokumente hochgeladen...",
-    "roles": "Deine Rollen: "
+    "roles": "Deine Rollen: ",
+    "confirm": "Dokument löschen?",
+    "delete": "Löschen"
   },
   "error": {
     "upload": "Upload fehlgeschlagen. Bitte versuchen Sie es später erneut.",

@@ -18,3 +18,7 @@ run:
 build:
     docker build -t chatdoc .
     docker tag chatdoc:latest chatdoc:dev
+
+# Run the app in a docker container
+compose:
+    docker compose up

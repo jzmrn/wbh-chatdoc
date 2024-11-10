@@ -3,7 +3,6 @@ import json
 from json import JSONEncoder
 
 import psycopg2
-import reflex as rx
 from psycopg2 import sql
 
 from .models import QA, Chat, Chunk, Document
@@ -17,6 +16,8 @@ class ChatEncoder(JSONEncoder):
             return [self.default(v) for v in value]
         if isinstance(value, dict):
             return dict(value)
+        if isinstance(value, str):
+            return value
         else:
             return value.__dict__
 
@@ -43,7 +44,7 @@ class DatabaseHandler:
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     role VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
@@ -64,7 +65,7 @@ class DatabaseHandler:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO documents (name, role, created_at)
+                INSERT INTO documents (name, role, timestamp)
                 VALUES (%s, %s, CURRENT_TIMESTAMP)
                 RETURNING id
                 """,
@@ -79,7 +80,7 @@ class DatabaseHandler:
             placeholders = sql.SQL(", ").join(sql.Placeholder() * len(roles))
             query = sql.SQL(
                 """
-                SELECT id, name, role, created_at
+                SELECT id, name, role, timestamp
                 FROM documents
                 WHERE role IN ({values})
                 """

@@ -92,7 +92,7 @@ def unauth_view() -> rx.Component:
 
 app = rx.App(
     theme=rx.theme(
-        appearance="dark",
+        appearance="light",
         accent_color="violet",
     ),
 )

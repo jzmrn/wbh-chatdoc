@@ -1,8 +1,8 @@
 import reflex as rx
 
-from chatdoc.constants import UPLOAD_ID
 from chatdoc.state import State
 
+from ..constants import DATE, UPLOAD_ID
 from .common import content, header
 from .navbar import navbar
 
@@ -22,7 +22,10 @@ def upload_form():
                     id=UPLOAD_ID,
                     padding="3em",
                     width="40em",
-                    accept={"application/pdf": [".pdf"]},
+                    accept={
+                        "application/pdf": [".pdf"],
+                        "application/msword": [".docx", ".doc"],
+                    },
                     max_files=5,
                     max_size=10 * 1024 * 1024,
                 ),
@@ -66,10 +69,55 @@ def upload_form():
     )
 
 
+def modal(id: any, name: any) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.button(
+                rx.icon(
+                    tag="trash",
+                    size=16,
+                    color=rx.color("mauve", 12),
+                ),
+                background_color=rx.color("mauve", 6),
+                size="1",
+            )
+        ),
+        rx.dialog.content(
+            rx.dialog.title(State.strings["docs.confirm"]),
+            rx.flex(
+                rx.center(name, font_style="oblique"),
+                rx.dialog.close(
+                    rx.flex(
+                        rx.button(
+                            State.strings["docs.delete"],
+                            background_color="red",
+                            on_click=lambda: State.delete_document(id),
+                        ),
+                        justify="end",
+                    )
+                ),
+                direction="column",
+                spacing="4",
+            ),
+        ),
+    )
+
+
 def list_docs() -> rx.Component:
     return rx.vstack(
-        rx.heading(State.strings["docs.title"]),
         rx.box(
+            rx.hstack(
+                rx.heading(State.strings["docs.title"]),
+                rx.button(
+                    rx.icon(
+                        tag="refresh-cw",
+                        size=16,
+                    ),
+                    on_click=State.refresh_docs,
+                ),
+                justify_content="space-between",
+                margin_bottom="1em",
+            ),
             rx.cond(
                 State.documents_empty,
                 rx.box(
@@ -92,7 +140,7 @@ def list_docs() -> rx.Component:
                                     white_space="nowrap",
                                 ),
                                 rx.hstack(
-                                    rx.badge(rx.moment(doc.timestamp, from_now=True)),
+                                    rx.badge(rx.moment(doc.timestamp, format=DATE)),
                                     rx.badge(
                                         doc.role,
                                         variant="soft",
@@ -101,6 +149,7 @@ def list_docs() -> rx.Component:
                                     rx.button(
                                         rx.icon(
                                             tag="download",
+                                            size=16,
                                             color=rx.color("mauve", 12),
                                         ),
                                         background_color=rx.color("mauve", 6),
@@ -110,15 +159,7 @@ def list_docs() -> rx.Component:
                                             doc.name,
                                         ),
                                     ),
-                                    rx.button(
-                                        rx.icon(
-                                            tag="trash",
-                                            color=rx.color("mauve", 12),
-                                        ),
-                                        background_color=rx.color("mauve", 6),
-                                        size="1",
-                                        on_click=lambda: State.delete_document(doc.id),
-                                    ),
+                                    modal(doc.id, doc.name),
                                 ),
                                 width="100%",
                                 justify="between",

@@ -4,11 +4,11 @@ import reflex as rx
 
 
 class Chunk(rx.Base):
-    """A document with metadata."""
+    """A small piece of a document."""
 
     id: str
     page_content: str
-    metadata: dict[str, str]
+    metadata: dict[str, str | int | list[str]]
 
 
 class Document(rx.Base):
@@ -17,7 +17,7 @@ class Document(rx.Base):
     id: int | None
     name: str
     role: str
-    timestamp: datetime = datetime.now()
+    timestamp: datetime
 
 
 class QA(rx.Base):
@@ -26,7 +26,7 @@ class QA(rx.Base):
     question: str
     answer: str
     context: list[Chunk]
-    timestamp: datetime = datetime.now()
+    timestamp: datetime
 
 
 class Chat(rx.Base):
