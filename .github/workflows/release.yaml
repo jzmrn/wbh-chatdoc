@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,6 +20,12 @@ jobs:
       with:
         node-version: 20.x
 
+    - name: Semantic Release
+      id: release
+      uses: cycjimmy/semantic-release-action@v4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: install semantic release
       run: |
         npm install --save-dev \
@@ -28,9 +34,51 @@ jobs:
           semantic-release \
           @semantic-release/github
 
-    - name: release
-      run: npx semantic-release
-      env:
-        DOCKER_REGISTRY_USER: ${{ vars.DOCKER_USER }}
-        DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_TOKEN }}
-        GH_TOKEN: ${{ secrets.GH_SECRET }}
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ vars.DOCKER_USER }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+
+    outputs:
+      release: ${{ steps.release.outputs.new_release_published }}
+      version: ${{ steps.release.outputs.new_release_version }}
+      major: ${{ steps.release.outputs.new_release_major_version }}
+
+  backend:
+    runs-on: ubuntu-latest
+    needs: release
+
+    if: needs.release.outputs.release == 'true'
+
+    steps:
+    - name: Build and push backend
+      id: build-backend
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: |
+          jzmrn/chatdoc-backend:${{ needs.release.outputs.version }}
+          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}
+          jzmrn/chatdoc-frontend:latest
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: release
+
+    if: needs.release.outputs.release == 'true'
+
+    steps:
+    - name: Build and push frontend
+      id: build-frontend
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile.web
+        push: true
+        tags: |
+          jzmrn/chatdoc-frontend:${{ needs.release.outputs.version }}
+          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}
+          jzmrn/chatdoc-frontend:latest
