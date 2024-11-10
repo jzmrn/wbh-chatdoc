@@ -32,7 +32,9 @@
     "description": "Drag and drop files here or click to select files",
     "processing": "Your files are uploaded and processed...",
     "empty": "No documents uploaded yet...",
-    "roles": "Your roles: "
+    "roles": "Your roles: ",
+    "confirm": "Delete document?",
+    "delete": "Delete"
   },
   "error": {
     "upload": "Upload failed. Please try again later.",

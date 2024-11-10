@@ -16,6 +16,8 @@ class ChatEncoder(JSONEncoder):
             return [self.default(v) for v in value]
         if isinstance(value, dict):
             return dict(value)
+        if isinstance(value, str):
+            return value
         else:
             return value.__dict__
 

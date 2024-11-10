@@ -12,7 +12,10 @@ from langchain.chains import (
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema.document import Document as DocEntry
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.document_loaders import Docx2txtLoader, PyPDFLoader
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    UnstructuredWordDocumentLoader,
+)
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 
@@ -206,32 +209,25 @@ class State(rx.State):
             )
             self.cached_chats = {chat.id: chat for chat in chats}
 
+        sorted_chats = sorted(
+            self.cached_chats.values(),
+            key=self._chat_timestamp,
+            reverse=True,
+        )
+
         chats = {}
-        for chat in self.cached_chats.values():
-            timestamp = (
-                chat.timestamp
-                if len(chat.messages) == 0
-                else chat.messages[-1].timestamp
-            )
-            key = timestamp.strftime("%d.%m.%Y")
+        for chat in sorted_chats:
+            key = self._chat_timestamp(chat).strftime("%d.%m.%Y")
             if key not in chats:
                 chats[key] = []
             chats[key].append(chat)
-        return {
-            k: v[::-1]
-            for k, v in dict(
-                sorted(
-                    chats.items(),
-                    key=lambda x: datetime.strptime(x[0], "%d.%m.%Y"),
-                    reverse=True,
-                )
-            ).items()
-        }
 
-    def refresh_chats(self):
-        chats = Database.get_instance().db.get_chats_by_userid(self.preferred_username)
-        self.selected_chat = None
-        self.cached_chats = {chat.id: chat for chat in chats}
+        return chats
+
+    def _chat_timestamp(self, chat: Chat):
+        return (
+            chat.timestamp if len(chat.messages) == 0 else chat.messages[-1].timestamp
+        )
 
     def create_chat(self):
         if self.new_chat_name == "":
@@ -244,6 +240,7 @@ class State(rx.State):
             name=self.new_chat_name,
             userid=f"{self.preferred_username}",
             messages=[],
+            timestamp=datetime.now(),
         )
         chat.id = Database.get_instance().db.store_chat(chat)
 
@@ -280,7 +277,7 @@ class State(rx.State):
         yield
 
         # Add the question to the list of questions.
-        qa = QA(question=question, answer="", context=[])
+        qa = QA(question=question, answer="", context=[], timestamp=datetime.now())
         self.current_chat.messages.append(qa)
         yield rx.scroll_to("latest")
 
@@ -364,11 +361,10 @@ class State(rx.State):
                     page_content=d.page_content,
                     metadata={
                         **d.metadata,
-                        **{
-                            "page": int(d.metadata["page"] if d.metadata["page"] else 0)
-                            + 1
-                        },
-                    },
+                        **({"page": int(m.get("page", 0)) + 1} if "page" in m else {}),
+                    }
+                    if isinstance(m := d.metadata, dict)
+                    else {},
                 )
                 for d in context
             ]
@@ -381,6 +377,12 @@ class State(rx.State):
     ##########
     # Upload #
     ##########
+
+    def refresh_docs(self):
+        docs = Database.get_instance().db.get_documents_by_roles(
+            [*self.user_roles, self.preferred_username]
+        )
+        self.cached_documents = {doc.id: doc for doc in docs}
 
     @rx.var(cache=True)
     def documents(self) -> list[Document]:
@@ -430,7 +432,7 @@ class State(rx.State):
                 name = file.filename
                 extension = name.split(".")[-1]
 
-                doc = Document(name=name, role=role)
+                doc = Document(name=name, role=role, timestamp=datetime.now())
                 document_id = Database.get_instance().db.store_document(doc)
                 doc.id = document_id
                 self.cached_documents[doc.id] = doc
@@ -443,8 +445,8 @@ class State(rx.State):
                 match extension:
                     case "pdf":
                         loader = PyPDFLoader(path)
-                    case "docx":
-                        loader = Docx2txtLoader(path)
+                    case "docx" | "doc":
+                        loader = UnstructuredWordDocumentLoader(path, mode="elements")
                     case _:
                         raise ValueError("Unsupported file format")
 

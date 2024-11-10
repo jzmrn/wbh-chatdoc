@@ -32,7 +32,9 @@
     "description": "Dateien hier ablegen oder klicken um Dateien auszuwählen",
     "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
     "empty": "Keine Dokumente hochgeladen...",
-    "roles": "Deine Rollen: "
+    "roles": "Deine Rollen: ",
+    "confirm": "Dokument löschen?",
+    "delete": "Löschen"
   },
   "error": {
     "upload": "Upload fehlgeschlagen. Bitte versuchen Sie es später erneut.",

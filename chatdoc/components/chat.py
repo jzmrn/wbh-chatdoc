@@ -43,7 +43,7 @@ def sidebargroups(chats: dict[str, Iterable[Chat]]) -> rx.Component:
                         State.strings["chat.today"],
                         chat,
                     ),
-                    size="4",
+                    size="2",
                     color=rx.color("mauve", 12),
                 ),
                 rx.foreach(chats[chat], sidebar_chat),
@@ -87,10 +87,13 @@ def modal() -> rx.Component:
                     on_blur=State.set_new_chat_name,
                 ),
                 rx.dialog.close(
-                    rx.button(
-                        State.strings["chat.create"],
-                        on_click=State.create_chat,
-                    ),
+                    rx.flex(
+                        rx.button(
+                            State.strings["chat.create"],
+                            on_click=State.create_chat,
+                        ),
+                        justify="end",
+                    )
                 ),
                 direction="column",
                 spacing="4",
@@ -119,20 +122,20 @@ def message(qa: QA) -> rx.Component:
         rx.box(
             rx.vstack(
                 rx.cond(
-                    State.processing & qa.answer == "",
-                    rx.image(
-                        src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
-                        width="2em",
-                        margin="1em",
-                    ),
+                    qa.answer == "",
                     rx.cond(
-                        qa.answer == "",
-                        rx.text(State.strings["chat.empty"]),
-                        rx.vstack(
-                            rx.markdown(qa.answer),
-                            rx.foreach(qa.context, display_ref),
-                            padding_bottom="1em",
+                        State.processing & qa == State.current_chat.messages[-1],
+                        rx.image(
+                            src="https://media.tenor.com/NqKNFHSmbssAAAAi/discord-loading-dots-discord-loading.gif",
+                            width="2em",
+                            margin="1em",
                         ),
+                        rx.markdown(State.strings["chat.empty"]),
+                    ),
+                    rx.vstack(
+                        rx.markdown(qa.answer),
+                        rx.foreach(qa.context, display_ref),
+                        padding_bottom="1em",
                     ),
                 ),
             ),
@@ -152,7 +155,11 @@ def display_ref(docx: Chunk) -> rx.Component:
         rx.hover_card.root(
             rx.hover_card.trigger(
                 rx.link(
-                    f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
+                    rx.cond(
+                        docx.metadata.contains("page"),
+                        f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
+                        docx.metadata["source"],
+                    ),
                     color_scheme="blue",
                     underline="always",
                     on_click=lambda: State.download_file(

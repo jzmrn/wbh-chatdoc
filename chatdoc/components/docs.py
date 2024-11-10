@@ -22,7 +22,10 @@ def upload_form():
                     id=UPLOAD_ID,
                     padding="3em",
                     width="40em",
-                    accept={"application/pdf": [".pdf", ".docx"]},
+                    accept={
+                        "application/pdf": [".pdf"],
+                        "application/msword": [".docx", ".doc"],
+                    },
                     max_files=5,
                     max_size=10 * 1024 * 1024,
                 ),
@@ -66,6 +69,40 @@ def upload_form():
     )
 
 
+def modal(id: any, name: any) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.button(
+                rx.icon(
+                    tag="trash",
+                    size=16,
+                    color=rx.color("mauve", 12),
+                ),
+                background_color=rx.color("mauve", 6),
+                size="1",
+            )
+        ),
+        rx.dialog.content(
+            rx.dialog.title(State.strings["docs.confirm"]),
+            rx.flex(
+                rx.center(name, font_style="oblique"),
+                rx.dialog.close(
+                    rx.flex(
+                        rx.button(
+                            State.strings["docs.delete"],
+                            background_color="red",
+                            on_click=lambda: State.delete_document(id),
+                        ),
+                        justify="end",
+                    )
+                ),
+                direction="column",
+                spacing="4",
+            ),
+        ),
+    )
+
+
 def list_docs() -> rx.Component:
     return rx.vstack(
         rx.box(
@@ -76,9 +113,10 @@ def list_docs() -> rx.Component:
                         tag="refresh-cw",
                         size=16,
                     ),
-                    on_click=State.refresh_chats,
+                    on_click=State.refresh_docs,
                 ),
                 justify_content="space-between",
+                margin_bottom="1em",
             ),
             rx.cond(
                 State.documents_empty,
@@ -121,16 +159,7 @@ def list_docs() -> rx.Component:
                                             doc.name,
                                         ),
                                     ),
-                                    rx.button(
-                                        rx.icon(
-                                            tag="trash",
-                                            size=16,
-                                            color=rx.color("mauve", 12),
-                                        ),
-                                        background_color=rx.color("mauve", 6),
-                                        size="1",
-                                        on_click=lambda: State.delete_document(doc.id),
-                                    ),
+                                    modal(doc.id, doc.name),
                                 ),
                                 width="100%",
                                 justify="between",
