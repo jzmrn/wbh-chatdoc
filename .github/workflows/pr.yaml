@@ -1,0 +1,34 @@
+name: validate
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build and push backend
+      id: build-backend
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build and push frontend
+      id: build-frontend
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile.web
