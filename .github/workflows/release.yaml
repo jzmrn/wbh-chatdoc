@@ -2,8 +2,8 @@ name: release
 
 on:
   push:
-    # branches:
-    #   - main
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -55,7 +55,7 @@ jobs:
         push: true
         tags: |
           jzmrn/chatdoc-backend:${{ needs.release.outputs.version }}
-          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}
+          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}-latest
           jzmrn/chatdoc-frontend:latest
 
   frontend:
@@ -82,5 +82,5 @@ jobs:
         push: true
         tags: |
           jzmrn/chatdoc-frontend:${{ needs.release.outputs.version }}
-          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}
+          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}-latest
           jzmrn/chatdoc-frontend:latest
