@@ -36,4 +36,4 @@ class Chat(rx.Base):
     name: str
     userid: str
     messages: list[QA] = []
-    timestamp: datetime = datetime.now()
+    timestamp: datetime

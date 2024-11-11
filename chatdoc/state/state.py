@@ -185,30 +185,40 @@ class State(rx.State):
     @rx.var(cache=True)
     def current_chat(self) -> Chat:
         if self.preferred_username is None:
-            return Chat(name="General", userid="user", messages=[])
+            return Chat(
+                name="General", userid="user", messages=[], timestamp=datetime.now()
+            )
 
-        if not self.cached_chats or len(self.cached_chats.keys()) == 0:
-            chat = Chat(name="General", userid=self.preferred_username, messages=[])
-            chat.id = Database.get_instance().db.store_chat(chat)
-            self.cached_chats = {chat.id: chat}
-            self.selected_chat = chat.id
-
+        self._ensure_chats()
         if self.selected_chat is None or self.selected_chat not in self.cached_chats:
-            self.selected_chat = list(self.cached_chats.values())[0].id
+            self.selected_chat = list(self.cached_chats.values())[-1].id
 
         return self.cached_chats[self.selected_chat]
 
-    @rx.var(cache=True)
-    def chats(self) -> dict[str, list[Chat]]:
-        if self.preferred_username is None:
-            return []
-
-        if self.cached_chats is None:
+    def _ensure_chats(self):
+        if not self.cached_chats:
             chats = Database.get_instance().db.get_chats_by_userid(
                 self.preferred_username
             )
             self.cached_chats = {chat.id: chat for chat in chats}
 
+        if len(self.cached_chats.keys()) == 0:
+            chat = Chat(
+                name="General",
+                userid=self.preferred_username,
+                messages=[],
+                timestamp=datetime.now(),
+            )
+            chat.id = Database.get_instance().db.store_chat(chat)
+            self.cached_chats[chat.id] = chat
+            self.selected_chat = chat.id
+
+    @rx.var(cache=True)
+    def chats(self) -> dict[str, list[Chat]]:
+        if self.preferred_username is None:
+            return {}
+
+        self._ensure_chats()
         sorted_chats = sorted(
             self.cached_chats.values(),
             key=self._chat_timestamp,
