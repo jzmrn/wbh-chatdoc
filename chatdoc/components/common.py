@@ -17,23 +17,18 @@ def content(*items: rx.Component) -> rx.Component:
 
 
 def header(title: str, *items: rx.Component) -> rx.Component:
-    return rx.box(
-        rx.card(
-            rx.hstack(
-                rx.heading(
-                    title,
-                    text_overflow="ellipsis",
-                    overflow="hidden",
-                    white_space="nowrap",
-                    max_width="70%",
-                ),
-                rx.hstack(*items),
-                justify_content="space-between",
+    return rx.card(
+        rx.hstack(
+            rx.heading(
+                title,
+                text_overflow="ellipsis",
+                overflow="hidden",
+                white_space="nowrap",
+                max_width="70%",
             ),
+            rx.hstack(*items),
+            justify_content="space-between",
         ),
-        position="fixed",
-        top="5em",
-        width="60%",
-        align_self="center",
-        overflow="hidden",
+        margin="1em",
+        padding="1em",
     )

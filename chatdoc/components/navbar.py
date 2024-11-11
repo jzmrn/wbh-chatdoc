@@ -4,10 +4,6 @@ from reflex.style import toggle_color_mode
 from chatdoc.state import State
 
 
-def navbar_link(text: str, url: str) -> rx.Component:
-    return rx.link(rx.text(text, size="4", weight="medium"), href=url)
-
-
 def navbar_icons_item(text: str, icon: str, url: str) -> rx.Component:
     return rx.link(
         rx.hstack(
@@ -62,15 +58,8 @@ def navbar():
             align="center",
             height="100%",
         ),
-        align="center",
-        backdrop_filter="auto",
-        backdrop_blur="lg",
         padding="12px",
         border_bottom=f"1px solid {rx.color('mauve', 3)}",
         background_color=rx.color("mauve", 2),
-        position="fixed",
-        top="0",
         height="4em",
-        z_index="100",
-        width="100%",
     )
