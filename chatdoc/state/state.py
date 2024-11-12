@@ -485,15 +485,13 @@ class State(rx.State):
     def download_file(self, fid: int, filename: str):
         try:
             dir = os.getenv("STORAGE_MOUNT")
-            path = f"{dir}/{fid}"
+            path = f"{dir}/{int(float(fid))}"
             with open(path, "rb") as f:
                 data = f.read()
+            return rx.download(data=data, filename=filename)
 
-            return rx.download(
-                data=data,
-                filename=filename,
-            )
-        except Exception:
+        except Exception as e:
+            print(e)
             return rx.toast.error(
                 self.strings["error.download"], position="bottom-center"
             )
