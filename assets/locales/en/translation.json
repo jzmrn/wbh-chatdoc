@@ -22,8 +22,7 @@
     "cancel": "Cancel",
     "error": "Chat name cannot be empty.",
     "info": "Ask a question with a maximum of 1000 characters.",
-    "empty": "Error generating response. Please try again later.",
-    "multiple": "Please delete a chat before creating a new one."
+    "empty": "Error generating response. Please try again later."
   },
   "docs": {
     "header": "Docs",
