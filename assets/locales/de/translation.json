@@ -22,7 +22,8 @@
     "cancel": "Abbrechen",
     "error": "Der Name des Chats darf nicht leer sein.",
     "info": "Stellen Sie eine Frage mit maximal 1000 Zeichen.",
-    "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut."
+    "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut.",
+    "multiple": "Bitte lösche einen Chat bevor du einen neuen erstellst."
   },
   "docs": {
     "header": "Docs",

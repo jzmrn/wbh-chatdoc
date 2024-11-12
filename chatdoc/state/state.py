@@ -243,6 +243,11 @@ class State(rx.State):
         if self.new_chat_name == "":
             return rx.toast.error(self.strings["chat.error"], position="bottom-center")
 
+        if len(self.cached_chats.keys()) > 10:
+            return rx.toast.warning(
+                self.strings["chat.multiple"], position="bottom-center"
+            )
+
         self.creating_chat = True
         yield
 
