@@ -9,7 +9,6 @@ from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
 
 from ..constants import DATE_TIME
-from .loading import loading_icon
 from .navbar import navbar
 
 message_style = dict(
@@ -247,7 +246,7 @@ def actions() -> rx.Component:
                     rx.button(
                         rx.cond(
                             State.processing,
-                            loading_icon(height="1em"),
+                            rx.spinner(),
                             rx.text(State.strings["chat.send"]),
                         ),
                         type="submit",
