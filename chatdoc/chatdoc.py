@@ -4,6 +4,7 @@ import reflex as rx
 
 from chatdoc.components import chat_view, docs_view
 from chatdoc.components.chat import actions, chat_header, messages, sidebar
+from chatdoc.components.docs import docs_header, docs_list, upload_form
 from chatdoc.components.navbar import navbar
 from chatdoc.state import State
 
@@ -234,32 +235,38 @@ def test() -> rx.Component:
 @rx.page(route="/new")
 def new() -> rx.Component:
     return page(
-        sidebar=sidebar(), header=chat_header(), content=messages(), footer=actions()
+        [
+            sidebar(),
+            get_main([chat_header(), messages(), actions()]),
+        ]
     )
 
 
-def page(
-    sidebar: rx.Component | None = None,
-    header: rx.Component | None = None,
-    content: rx.Component | None = None,
-    footer: rx.Component | None = None,
+@rx.page(route="/nd")
+def nd() -> rx.Component:
+    return page([get_main([upload_form(), docs_list()])])
+
+
+def get_main(
+    content: list[rx.Component],
 ) -> rx.Component:
+    return rx.box(
+        rx.flex(
+            *content,
+            direction="column",
+            align="stretch",
+            align_self="center",
+            height="100%",
+        ),
+        flex="1",
+    )
+
+
+def page(content: list[rx.Component]) -> rx.Component:
     return rx.flex(
         navbar(),
         rx.flex(
-            sidebar,
-            rx.box(
-                rx.flex(
-                    header,
-                    content,
-                    footer,
-                    direction="column",
-                    align="stretch",
-                    align_self="center",
-                    height="100%",
-                ),
-                flex="1",
-            ),
+            *content,
             align="stretch",
             direction="row",
             width="100%",

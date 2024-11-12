@@ -397,7 +397,7 @@ class State(rx.State):
     @rx.var(cache=True)
     def documents(self) -> list[Document]:
         if self.preferred_username is None:
-            return {}
+            return []
 
         if self.cached_documents is None:
             docs = Database.get_instance().db.get_documents_by_roles(
