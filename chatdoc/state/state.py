@@ -52,7 +52,6 @@ class State(rx.State):
     )
     languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
 
-    creating_chat: bool = False
     uploading: bool = False
 
     selected_chat: int | None = None
@@ -242,13 +241,14 @@ class State(rx.State):
         if self.new_chat_name == "":
             return rx.toast.error(self.strings["chat.error"], position="bottom-center")
 
-        if len(self.cached_chats.keys()) > 10:
-            return rx.toast.warning(
-                self.strings["chat.multiple"], position="bottom-center"
-            )
+        if len(self.cached_chats.keys()) > 99:
+            categories = self.chats.keys()
+            if len(categories) > 0:
+                category = categories[-1]
+                chat = self.chats[category][0]
 
-        self.creating_chat = True
-        yield
+                Database.get_instance().db.delete_chat(chat.id)
+                del self.cached_chats[chat.id]
 
         chat = chat = Chat(
             name=self.new_chat_name,
@@ -260,7 +260,6 @@ class State(rx.State):
 
         self.cached_chats[chat.id] = chat
         self.selected_chat = chat.id
-        self.creating_chat = False
 
     def delete_chat(self):
         id = self.current_chat.id
