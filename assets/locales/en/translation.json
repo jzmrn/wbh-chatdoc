@@ -8,7 +8,8 @@
   "menu": {
     "chat": "Chat",
     "docs": "Docs",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "cancel": "Cancel"
   },
   "chat": {
     "today": "Today",
@@ -19,7 +20,6 @@
     "title": "Create a new Chat",
     "placeholder": "Chat name...",
     "page": "Page",
-    "cancel": "Cancel",
     "error": "Chat name cannot be empty.",
     "info": "Ask a question with a maximum of 1000 characters.",
     "empty": "Error generating response. Please try again later."

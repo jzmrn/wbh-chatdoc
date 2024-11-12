@@ -83,16 +83,21 @@ def modal(id: any, name: any) -> rx.Component:
         rx.dialog.content(
             rx.dialog.title(State.strings["docs.confirm"]),
             rx.flex(
-                rx.center(name, font_style="oblique"),
+                rx.center(name, font_style="oblique", height="6em"),
                 rx.dialog.close(
                     rx.flex(
+                        rx.button(
+                            State.strings["menu.cancel"],
+                            background_color="gray",
+                        ),
                         rx.button(
                             State.strings["docs.delete"],
                             background_color="red",
                             on_click=lambda: State.delete_document(id),
                         ),
+                        spacing="2",
                         justify="end",
-                    )
+                    ),
                 ),
                 direction="column",
                 spacing="4",

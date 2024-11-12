@@ -8,7 +8,8 @@
   "menu": {
     "chat": "Chat",
     "docs": "Docs",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "cancel": "Abbrechen"
   },
   "chat": {
     "today": "Heute",
@@ -19,7 +20,6 @@
     "title": "Neuen Chat erstellen",
     "placeholder": "Name des Chats...",
     "page": "Seite",
-    "cancel": "Abbrechen",
     "error": "Der Name des Chats darf nicht leer sein.",
     "info": "Stellen Sie eine Frage mit maximal 1000 Zeichen.",
     "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut."
