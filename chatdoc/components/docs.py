@@ -55,10 +55,7 @@ def upload_form():
                             rx.button(
                                 State.strings["docs.upload"],
                                 on_click=State.handle_upload(
-                                    rx.upload_files(
-                                        upload_id=UPLOAD_ID,
-                                        on_upload_progress=State.handle_upload_progress,
-                                    ),
+                                    rx.upload_files(upload_id=UPLOAD_ID),
                                 ),
                             ),
                             float="right",

@@ -54,7 +54,6 @@ class State(rx.State):
 
     creating_chat: bool = False
     uploading: bool = False
-    upload_failed: bool = False
 
     selected_chat: int | None = None
 
@@ -427,13 +426,15 @@ class State(rx.State):
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
     @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        role = self.upload_role if self.upload_role else self.preferred_username
+    def handle_upload(self, files: list[rx.UploadFile]):
+        self.uploading = True
+        yield
 
         try:
+            role = self.upload_role if self.upload_role else self.preferred_username
             dir = os.getenv("STORAGE_MOUNT")
-            documents = []
 
+            documents = []
             for file in files:
                 name = file.filename
                 extension = name.split(".")[-1]
@@ -445,7 +446,7 @@ class State(rx.State):
 
                 path = f"{dir}/{document_id}"
                 with open(path, "wb") as f:
-                    content = await file.read()
+                    content = file.file.read()
                     f.write(content)
 
                 match extension:
@@ -476,19 +477,10 @@ class State(rx.State):
 
         except Exception as e:
             print(e)
-            self.upload_failed = True
             yield rx.toast.error(self.strings["error.upload"], position="bottom-center")
 
         finally:
             self.uploading = False
-
-    @rx.event
-    def handle_upload_progress(self, progress: dict):
-        if not self.upload_failed:
-            print(progress)
-            self.uploading = True
-        else:
-            self.upload_failed = False
 
     def download_file(self, fid: int, filename: str):
         try:
