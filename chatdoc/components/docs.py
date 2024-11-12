@@ -15,32 +15,32 @@ def upload_form():
         rx.heading(State.strings["docs.subheader"]),
         rx.form(
             rx.vstack(
-                rx.upload(
-                    rx.text(
-                        State.strings["docs.description"],
-                        weight="bold",
-                    ),
-                    rx.foreach(rx.selected_files(UPLOAD_ID), rx.text),
-                    border="0",
-                    id=UPLOAD_ID,
-                    padding="3em",
-                    width="100%",
-                    accept={
-                        "application/pdf": [".pdf"],
-                        "application/msword": [".docx", ".doc"],
-                    },
-                    max_files=5,
-                    max_size=10 * 1024 * 1024,
-                ),
                 rx.cond(
                     State.uploading,
                     rx.box(
                         rx.center(State.strings["docs.processing"]),
-                        rx.progress(value=State.progress, max=100),
+                        rx.center(rx.spinner()),
                         padding="1em",
                         width="100%",
                     ),
                     rx.box(
+                        rx.upload(
+                            rx.text(
+                                State.strings["docs.description"],
+                                weight="bold",
+                            ),
+                            rx.foreach(rx.selected_files(UPLOAD_ID), rx.text),
+                            border="0",
+                            id=UPLOAD_ID,
+                            padding="3em",
+                            width="100%",
+                            accept={
+                                "application/pdf": [".pdf"],
+                                "application/msword": [".docx", ".doc"],
+                            },
+                            max_files=5,
+                            max_size=10 * 1024 * 1024,
+                        ),
                         rx.hstack(
                             rx.select(
                                 State.user_roles,

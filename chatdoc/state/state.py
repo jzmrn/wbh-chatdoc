@@ -54,7 +54,7 @@ class State(rx.State):
 
     creating_chat: bool = False
     uploading: bool = False
-    progress: int = 0
+    upload_failed: bool = False
 
     selected_chat: int | None = None
 
@@ -421,21 +421,12 @@ class State(rx.State):
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
+    @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
-        self.uploading = True
-        self.progress = 0
         role = self.upload_role if self.upload_role else self.preferred_username
-        yield
 
         try:
             dir = os.getenv("STORAGE_MOUNT")
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-
-            self.progress = 10
-            yield
-
-            increment = 70 / len(files)
             documents = []
 
             for file in files:
@@ -473,33 +464,26 @@ class State(rx.State):
                         )
                     )
 
-                self.progress += increment
-                yield
-
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
             chunks = text_splitter.split_documents(documents)
-            self.progress = 80
-            yield
 
             Vector.get_instance().db.add_documents(chunks)
 
-            self.progress = 100
-            self.uploading = False
-
         except Exception as e:
-            self.uploading = False
-            self.progress = 0
             print(e)
+            self.upload_failed = True
             yield rx.toast.error(self.strings["error.upload"], position="bottom-center")
 
-    # Upload itself is only the first step of the process (20%)
-    def handle_upload_progress(self, progress: dict):
-        if self.progress < 100:
-            self.progress = round(progress["progress"] * 20)
+        finally:
+            self.uploading = False
 
-    def cancel_upload(self):
-        self.uploading = False
-        return rx.cancel_upload(UPLOAD_ID)
+    @rx.event
+    def handle_upload_progress(self, progress: dict):
+        if not self.upload_failed:
+            print(progress)
+            self.uploading = True
+        else:
+            self.upload_failed = False
 
     def download_file(self, fid: int, filename: str):
         try:
