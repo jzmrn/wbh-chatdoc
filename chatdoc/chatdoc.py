@@ -1,10 +1,6 @@
-"""The main Chat app."""
-
 import reflex as rx
 
 from chatdoc.components import chat_view, docs_view
-from chatdoc.components.chat import actions, chat_header, messages, sidebar
-from chatdoc.components.docs import docs_header, docs_list, upload_form
 from chatdoc.components.navbar import navbar
 from chatdoc.state import State
 
@@ -228,55 +224,6 @@ def test() -> rx.Component:
         direction="column",
         align="stretch",
         background_color="yellow",
-        height="100vh",
-    )
-
-
-@rx.page(route="/new")
-def new() -> rx.Component:
-    return page(
-        [
-            sidebar(),
-            get_main([chat_header(), messages(), actions()]),
-        ]
-    )
-
-
-@rx.page(route="/nd")
-def nd() -> rx.Component:
-    return page([get_main([upload_form(), docs_list()])])
-
-
-def get_main(
-    content: list[rx.Component],
-) -> rx.Component:
-    return rx.box(
-        rx.flex(
-            *content,
-            direction="column",
-            align="stretch",
-            align_self="center",
-            height="100%",
-        ),
-        flex="1",
-    )
-
-
-def page(content: list[rx.Component]) -> rx.Component:
-    return rx.flex(
-        navbar(),
-        rx.flex(
-            *content,
-            align="stretch",
-            direction="row",
-            width="100%",
-            max_width="72em",
-            align_self="center",
-            flex="1",
-            overflow="hidden",
-        ),
-        direction="column",
-        align="stretch",
         height="100vh",
     )
 

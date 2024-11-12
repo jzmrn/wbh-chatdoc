@@ -1,15 +1,13 @@
 from datetime import datetime
-from typing import Iterable
 
 import reflex as rx
 import reflex_chakra as rc
 
-from chatdoc.components.common import content, header
 from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
 
 from ..constants import DATE_TIME
-from .navbar import navbar
+from .common import content, page
 
 message_style = dict(
     display="inline-block",
@@ -32,25 +30,6 @@ def sidebar_chat(chat: Chat) -> rx.Component:
 
 
 def sidebar() -> rx.Component:
-    # return rx.vstack(
-    #     rx.vstack(
-    #         rx.heading(State.strings["chat.header"]),
-    #         rx.divider(),
-    #         sidebargroups(State.chats),
-    #         align_items="stretch",
-    #         width="100%",
-    #     ),
-    #     spacing="5",
-    #     position="fixed",
-    #     margin_top="4em",
-    #     padding_x="1em",
-    #     padding_y="1.5em",
-    #     bg=rx.color("accent", 3),
-    #     align="start",
-    #     height="100%",
-    #     width="16em",
-    # )
-
     return rx.card(
         rx.flex(
             rx.heading(State.strings["chat.header"], padding_bottom="2em"),
@@ -195,12 +174,6 @@ def display_ref(docx: Chunk) -> rx.Component:
     )
 
 
-def chat() -> rx.Component:
-    return content(
-        rx.box(rx.foreach(State.current_chat.messages, message), width="100%"),
-    )
-
-
 def messages() -> rx.Component:
     return rx.card(
         rx.center(
@@ -270,51 +243,33 @@ def actions() -> rx.Component:
     )
 
 
-def chat_view() -> rx.Component:
-    return rx.vstack(
-        navbar(),
+def header():
+    return rx.card(
         rx.hstack(
-            sidebar(),
-            rx.box(
-                rx.vstack(
-                    header(
-                        State.current_chat.name,
-                        modal(),
-                        rx.button(
-                            rx.icon(
-                                tag="trash",
-                                on_click=State.delete_chat,
-                                color=rx.color("mauve", 12),
-                            ),
-                            background_color=rx.color("mauve", 6),
-                        ),
+            rx.heading(
+                State.current_chat.name,
+                text_overflow="ellipsis",
+                overflow="hidden",
+                white_space="nowrap",
+                max_width="70%",
+            ),
+            rx.hstack(
+                modal(),
+                rx.button(
+                    rx.icon(
+                        tag="trash",
+                        on_click=State.delete_chat,
+                        color=rx.color("mauve", 12),
                     ),
-                    chat(),
-                    actions(),
+                    background_color=rx.color("mauve", 6),
                 ),
-                flex="1",
-                margin_left="16em",
-                margin_top="4em",
             ),
+            justify_content="space-between",
         ),
-        background_color=rx.color("mauve", 1),
-        color=rx.color("mauve", 12),
-        align_items="stretch",
-        spacing="0",
-        on_mount=State.update_strings,
+        margin="1em",
+        padding="1em",
     )
 
 
-def chat_header():
-    return header(
-        State.current_chat.name,
-        modal(),
-        rx.button(
-            rx.icon(
-                tag="trash",
-                on_click=State.delete_chat,
-                color=rx.color("mauve", 12),
-            ),
-            background_color=rx.color("mauve", 6),
-        ),
-    )
+def chat_view():
+    return page([sidebar(), content([header(), messages(), actions()])])

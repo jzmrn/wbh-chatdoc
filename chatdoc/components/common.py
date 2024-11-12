@@ -1,34 +1,35 @@
 import reflex as rx
 
+from .navbar import navbar
 
-def content(*items: rx.Component) -> rx.Component:
-    return rx.vstack(
-        *items,
-        py="8",
+
+def content(blocks: list[rx.Component]) -> rx.Component:
+    return rx.box(
+        rx.flex(
+            *blocks,
+            direction="column",
+            align="stretch",
+            align_self="center",
+            height="100%",
+        ),
         flex="1",
-        width="100%",
-        max_width="50em",
-        padding_x="4px",
-        padding_top="10em",
-        align_self="center",
-        overflow="hidden",
-        padding_bottom="5em",
     )
 
 
-def header(title: str, *items: rx.Component) -> rx.Component:
-    return rx.card(
-        rx.hstack(
-            rx.heading(
-                title,
-                text_overflow="ellipsis",
-                overflow="hidden",
-                white_space="nowrap",
-                max_width="70%",
-            ),
-            rx.hstack(*items),
-            justify_content="space-between",
+def page(content: list[rx.Component]) -> rx.Component:
+    return rx.flex(
+        navbar(),
+        rx.flex(
+            *content,
+            align="stretch",
+            direction="row",
+            width="100%",
+            max_width="72em",
+            align_self="center",
+            flex="1",
+            overflow="hidden",
         ),
-        margin="1em",
-        padding="1em",
+        direction="column",
+        align="stretch",
+        height="100vh",
     )
