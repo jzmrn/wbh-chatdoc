@@ -1,16 +1,13 @@
 from datetime import datetime
-from typing import Iterable
 
 import reflex as rx
 import reflex_chakra as rc
 
-from chatdoc.components.common import content, header
 from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
 
 from ..constants import DATE_TIME
-from .loading import loading_icon
-from .navbar import navbar
+from .common import content, page
 
 message_style = dict(
     display="inline-block",
@@ -32,47 +29,52 @@ def sidebar_chat(chat: Chat) -> rx.Component:
     )
 
 
-def sidebargroups(chats: dict[str, Iterable[Chat]]) -> rx.Component:
-    return rx.vstack(
-        rx.foreach(
-            chats.keys(),
-            lambda chat: rx.vstack(
-                rx.heading(
-                    rx.cond(
-                        chat == datetime.now().strftime("%d.%m.%Y"),
-                        State.strings["chat.today"],
-                        chat,
-                    ),
-                    size="2",
-                    color=rx.color("mauve", 12),
-                ),
-                rx.foreach(chats[chat], sidebar_chat),
-                spacing="2",
-                width="100%",
-            ),
-        ),
-        spacing="6",
-    )
-
-
 def sidebar() -> rx.Component:
-    return rx.vstack(
-        rx.vstack(
-            rx.heading(State.strings["chat.header"]),
+    return rx.card(
+        rx.flex(
+            rx.heading(State.strings["chat.header"], padding_bottom="2em"),
             rx.divider(),
-            sidebargroups(State.chats),
-            align_items="stretch",
-            width="100%",
+            rx.scroll_area(
+                rx.flex(
+                    rx.foreach(
+                        State.chats.keys(),
+                        lambda chat: rx.box(
+                            rx.flex(
+                                rx.heading(
+                                    rx.cond(
+                                        chat == datetime.now().strftime("%d.%m.%Y"),
+                                        State.strings["chat.today"],
+                                        chat,
+                                    ),
+                                    size="2",
+                                    color=rx.color("mauve", 12),
+                                    position="sticky",
+                                ),
+                                rx.foreach(State.chats[chat], sidebar_chat),
+                                spacing="2",
+                                direction="column",
+                            ),
+                            width="100%",
+                        ),
+                    ),
+                    direction="column",
+                    align="stretch",
+                    spacing="6",
+                    width="14em",
+                    padding="0.5em",
+                ),
+                type="always",
+                scrollbars="vertical",
+                flex="1",
+            ),
+            direction="column",
+            align="stretch",
+            height="100%",
         ),
-        spacing="5",
-        position="fixed",
-        margin_top="4em",
-        padding_x="1em",
-        padding_y="1.5em",
         bg=rx.color("accent", 3),
-        align="start",
-        height="100%",
         width="16em",
+        padding="0.5em",
+        margin="1em",
     )
 
 
@@ -172,89 +174,102 @@ def display_ref(docx: Chunk) -> rx.Component:
     )
 
 
-def chat() -> rx.Component:
-    return content(
-        rx.box(rx.foreach(State.current_chat.messages, message), width="100%"),
+def messages() -> rx.Component:
+    return rx.card(
+        rx.center(
+            rx.flex(
+                rx.scroll_area(
+                    rx.center(
+                        rx.foreach(State.current_chat.messages, message),
+                        direction="column",
+                        align_self="center",
+                    ),
+                    type="always",
+                    scrollbars="vertical",
+                ),
+                width="40em",
+                height="100%",
+            ),
+            overflow="hidden",
+            height="100%",
+        ),
+        flex="1",
+        margin="1em",
+        padding="0.5em",
     )
 
 
-def action_bar() -> rx.Component:
-    return rx.center(
-        rx.vstack(
-            rx.form(
-                rc.form_control(
-                    rx.hstack(
-                        rx.input(
-                            rx.input.slot(
-                                rx.tooltip(
-                                    rx.icon("info", size=18),
-                                    content=State.strings["chat.info"],
-                                )
-                            ),
-                            max_length=1000,
-                            placeholder=State.strings["chat.input"],
-                            id="question",
-                            width=["10em", "15em", "25em", "35em", "40em", "40em"],
+def actions() -> rx.Component:
+    return rx.card(
+        rx.form(
+            rc.form_control(
+                rx.flex(
+                    rx.input(
+                        rx.input.slot(
+                            rx.tooltip(
+                                rx.icon("info", size=18),
+                                content=State.strings["chat.info"],
+                            )
                         ),
-                        rx.button(
-                            rx.cond(
-                                State.processing,
-                                loading_icon(height="1em"),
-                                rx.text(State.strings["chat.send"]),
-                            ),
-                            type="submit",
-                        ),
-                        align_items="center",
+                        max_length=1000,
+                        placeholder=State.strings["chat.input"],
+                        id="question",
+                        flex="1",
                     ),
-                    is_disabled=State.processing,
+                    rx.button(
+                        rx.cond(
+                            State.processing,
+                            rx.spinner(),
+                            rx.text(State.strings["chat.send"]),
+                        ),
+                        type="submit",
+                    ),
+                    direction="row",
+                    align="stretch",
+                    align_items="center",
+                    spacing="2",
                 ),
-                on_submit=State.process_question,
-                reset_on_submit=True,
+                is_disabled=State.processing,
             ),
-            align_items="center",
+            on_submit=State.process_question,
+            reset_on_submit=True,
+            width="100%",
         ),
-        position="fixed",
-        padding_right="16em",
-        bottom="0",
-        padding_y="16px",
         backdrop_filter="auto",
         backdrop_blur="lg",
-        border_top=f"1px solid {rx.color('mauve', 3)}",
         background_color=rx.color("mauve", 2),
-        width="100%",
+        padding="0.5em",
+        margin="1em",
     )
 
 
-def chat_view() -> rx.Component:
-    return rx.vstack(
-        navbar(),
+def header():
+    return rx.card(
         rx.hstack(
-            sidebar(),
-            rx.box(
-                rx.vstack(
-                    header(
-                        State.current_chat.name,
-                        modal(),
-                        rx.button(
-                            rx.icon(
-                                tag="trash",
-                                on_click=State.delete_chat,
-                                color=rx.color("mauve", 12),
-                            ),
-                            background_color=rx.color("mauve", 6),
-                        ),
-                    ),
-                    chat(),
-                    action_bar(),
-                ),
-                flex="1",
-                margin_left="16em",
-                margin_top="4em",
+            rx.heading(
+                State.current_chat.name,
+                text_overflow="ellipsis",
+                overflow="hidden",
+                white_space="nowrap",
+                max_width="70%",
             ),
+            rx.hstack(
+                modal(),
+                rx.button(
+                    rx.icon(
+                        tag="trash",
+                        on_click=State.delete_chat,
+                        color=rx.color("mauve", 12),
+                    ),
+                    background_color=rx.color("mauve", 6),
+                ),
+            ),
+            justify_content="space-between",
         ),
-        background_color=rx.color("mauve", 1),
-        color=rx.color("mauve", 12),
-        align_items="stretch",
-        spacing="0",
-        on_mount=State.update_strings,
+        margin="1em",
+        padding="1em",
     )
+
+
+def chat_view():
+    return page([sidebar(), content([header(), messages(), actions()])])

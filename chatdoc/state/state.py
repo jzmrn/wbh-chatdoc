@@ -54,7 +54,6 @@ class State(rx.State):
 
     creating_chat: bool = False
     uploading: bool = False
-    progress: int = 0
 
     selected_chat: int | None = None
 
@@ -185,30 +184,40 @@ class State(rx.State):
     @rx.var(cache=True)
     def current_chat(self) -> Chat:
         if self.preferred_username is None:
-            return Chat(name="General", userid="user", messages=[])
+            return Chat(
+                name="General", userid="user", messages=[], timestamp=datetime.now()
+            )
 
-        if not self.cached_chats or len(self.cached_chats.keys()) == 0:
-            chat = Chat(name="General", userid=self.preferred_username, messages=[])
-            chat.id = Database.get_instance().db.store_chat(chat)
-            self.cached_chats = {chat.id: chat}
-            self.selected_chat = chat.id
-
+        self._ensure_chats()
         if self.selected_chat is None or self.selected_chat not in self.cached_chats:
-            self.selected_chat = list(self.cached_chats.values())[0].id
+            self.selected_chat = list(self.cached_chats.values())[-1].id
 
         return self.cached_chats[self.selected_chat]
 
-    @rx.var(cache=True)
-    def chats(self) -> dict[str, list[Chat]]:
-        if self.preferred_username is None:
-            return []
-
-        if self.cached_chats is None:
+    def _ensure_chats(self):
+        if not self.cached_chats:
             chats = Database.get_instance().db.get_chats_by_userid(
                 self.preferred_username
             )
             self.cached_chats = {chat.id: chat for chat in chats}
 
+        if len(self.cached_chats.keys()) == 0:
+            chat = Chat(
+                name="General",
+                userid=self.preferred_username,
+                messages=[],
+                timestamp=datetime.now(),
+            )
+            chat.id = Database.get_instance().db.store_chat(chat)
+            self.cached_chats[chat.id] = chat
+            self.selected_chat = chat.id
+
+    @rx.var(cache=True)
+    def chats(self) -> dict[str, list[Chat]]:
+        if self.preferred_username is None:
+            return {}
+
+        self._ensure_chats()
         sorted_chats = sorted(
             self.cached_chats.values(),
             key=self._chat_timestamp,
@@ -232,6 +241,11 @@ class State(rx.State):
     def create_chat(self):
         if self.new_chat_name == "":
             return rx.toast.error(self.strings["chat.error"], position="bottom-center")
+
+        if len(self.cached_chats.keys()) > 10:
+            return rx.toast.warning(
+                self.strings["chat.multiple"], position="bottom-center"
+            )
 
         self.creating_chat = True
         yield
@@ -387,7 +401,7 @@ class State(rx.State):
     @rx.var(cache=True)
     def documents(self) -> list[Document]:
         if self.preferred_username is None:
-            return {}
+            return []
 
         if self.cached_documents is None:
             docs = Database.get_instance().db.get_documents_by_roles(
@@ -411,23 +425,16 @@ class State(rx.State):
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
-    async def handle_upload(self, files: list[rx.UploadFile]):
+    @rx.event
+    def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
-        self.progress = 0
-        role = self.upload_role if self.upload_role else self.preferred_username
         yield
 
         try:
+            role = self.upload_role if self.upload_role else self.preferred_username
             dir = os.getenv("STORAGE_MOUNT")
-            if not os.path.exists(dir):
-                os.makedirs(dir)
 
-            self.progress = 10
-            yield
-
-            increment = 70 / len(files)
             documents = []
-
             for file in files:
                 name = file.filename
                 extension = name.split(".")[-1]
@@ -439,7 +446,7 @@ class State(rx.State):
 
                 path = f"{dir}/{document_id}"
                 with open(path, "wb") as f:
-                    content = await file.read()
+                    content = file.file.read()
                     f.write(content)
 
                 match extension:
@@ -463,33 +470,17 @@ class State(rx.State):
                         )
                     )
 
-                self.progress += increment
-                yield
-
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
             chunks = text_splitter.split_documents(documents)
-            self.progress = 80
-            yield
 
             Vector.get_instance().db.add_documents(chunks)
 
-            self.progress = 100
-            self.uploading = False
-
         except Exception as e:
-            self.uploading = False
-            self.progress = 0
             print(e)
             yield rx.toast.error(self.strings["error.upload"], position="bottom-center")
 
-    # Upload itself is only the first step of the process (20%)
-    def handle_upload_progress(self, progress: dict):
-        if self.progress < 100:
-            self.progress = round(progress["progress"] * 20)
-
-    def cancel_upload(self):
-        self.uploading = False
-        return rx.cancel_upload(UPLOAD_ID)
+        finally:
+            self.uploading = False
 
     def download_file(self, fid: int, filename: str):
         try:
