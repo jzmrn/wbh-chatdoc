@@ -148,7 +148,7 @@ def message(qa: QA) -> rx.Component:
             **message_style,
             id=rx.cond(qa == State.current_chat.messages[-1], "latest", "any"),
         ),
-        width="100%",
+        width="46em",
     )
 
 
@@ -187,12 +187,13 @@ def messages() -> rx.Component:
                     type="always",
                     scrollbars="vertical",
                 ),
-                width="40em",
+                width="48em",
                 height="100%",
             ),
             overflow="hidden",
             height="100%",
         ),
+        width="50em",
         flex="1",
         margin="1em",
         padding="0.5em",
@@ -236,6 +237,7 @@ def actions() -> rx.Component:
             width="100%",
         ),
         backdrop_filter="auto",
+        width="50em",
         backdrop_blur="lg",
         background_color=rx.color("mauve", 2),
         padding="0.5em",
@@ -268,6 +270,7 @@ def header():
         ),
         margin="1em",
         padding="1em",
+        width="50em",
     )
 
 
