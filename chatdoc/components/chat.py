@@ -152,24 +152,23 @@ def message(qa: QA) -> rx.Component:
     )
 
 
-def display_ref(docx: Chunk) -> rx.Component:
+def display_ref(chunk: Chunk) -> rx.Component:
+    m = chunk.metadata
     return rx.hstack(
         rx.hover_card.root(
             rx.hover_card.trigger(
                 rx.link(
                     rx.cond(
-                        docx.metadata.contains("page"),
-                        f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
-                        docx.metadata["source"],
+                        m.contains("page_id"),
+                        f"{m["source"]} ({State.strings["chat.page"]}: {m['page_id']})",
+                        m["source"],
                     ),
                     color_scheme="blue",
                     underline="always",
-                    on_click=lambda: State.download_file(
-                        docx.metadata["document_id"], docx.metadata["source"]
-                    ),
+                    on_click=lambda: State.download_file(m["document_id"], m["source"]),
                 ),
             ),
-            rx.hover_card.content(rx.text(docx.page_content)),
+            rx.hover_card.content(rx.text(chunk.page_content)),
         ),
     )
 

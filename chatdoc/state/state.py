@@ -457,11 +457,15 @@ class State(rx.State):
                         raise ValueError("Unsupported file format")
 
                 for chunk in loader.load():
+                    page = chunk.metadata.get("page_number") or int(
+                        chunk.metadata.get("page") + 1
+                    )
                     documents.append(
                         DocEntry(
                             page_content=chunk.page_content,
                             metadata={
                                 **chunk.metadata,
+                                **({"page_id": page} if page else {}),
                                 "role": role,
                                 "source": name,
                                 "document_id": document_id,
