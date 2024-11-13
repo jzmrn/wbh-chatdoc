@@ -151,9 +151,16 @@ def docs_list() -> rx.Component:
             rx.flex(
                 rx.hstack(
                     rx.heading(State.strings["docs.title"]),
-                    rx.button(
-                        rx.icon(tag="refresh-cw", size=16),
-                        on_click=State.refresh_docs,
+                    rx.hstack(
+                        rx.select(
+                            State.filters,
+                            default_value=State.strings["docs.all"],
+                            on_change=State.set_filter,
+                        ),
+                        rx.button(
+                            rx.icon(tag="refresh-cw", size=16),
+                            on_click=State.refresh_docs,
+                        ),
                     ),
                     justify_content="space-between",
                     margin_bottom="1em",
@@ -171,7 +178,7 @@ def docs_list() -> rx.Component:
                     ),
                     rx.scroll_area(
                         rx.center(
-                            rx.foreach(State.documents, doc),
+                            rx.foreach(State.filtered_documents, doc),
                             direction="column",
                             align_self="center",
                             spacing="2",

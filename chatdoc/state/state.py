@@ -51,6 +51,7 @@ class State(rx.State):
         )
     )
     languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
+    filter: str | None = None
 
     uploading: bool = False
     selected_chat: int | None = None
@@ -387,6 +388,25 @@ class State(rx.State):
     # Upload #
     ##########
 
+    @rx.var(cache=True)
+    def filters(self) -> list[str]:
+        return [self.strings["docs.all"], *self.user_roles]
+
+    def set_filter(self, role: str):
+        self.filter = role
+
+    @rx.var(cache=True)
+    def filtered_documents(self) -> list[Document]:
+        if self.preferred_username is None:
+            return []
+
+        self._ensure_docs()
+        if not self.filter or self.filter == self.strings["docs.all"]:
+            return list(self.cached_documents.values())
+
+        role = self.preferred_username if self.filter == "Privat" else self.filter
+        return [doc for doc in self.cached_documents.values() if doc.role == role]
+
     def refresh_docs(self):
         docs = Database.get_instance().db.get_documents_by_roles(
             [*self.user_roles, self.preferred_username]
@@ -398,17 +418,19 @@ class State(rx.State):
         if self.preferred_username is None:
             return []
 
+        self._ensure_docs()
+        return list(self.cached_documents.values())
+
+    def _ensure_docs(self):
         if self.cached_documents is None:
             docs = Database.get_instance().db.get_documents_by_roles(
                 [*self.user_roles, self.preferred_username]
             )
             self.cached_documents = {doc.id: doc for doc in docs}
 
-        return list(self.cached_documents.values())
-
     @rx.var(cache=True)
     def documents_empty(self) -> bool:
-        return len(self.documents) == 0
+        return len(self.filtered_documents) == 0
 
     def set_upload_role(self, data: str):
         self.upload_role = data
