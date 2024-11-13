@@ -74,7 +74,8 @@ def sidebar() -> rx.Component:
         bg=rx.color("accent", 3),
         width="16em",
         padding="0.5em",
-        margin="1em",
+        margin_y="1em",
+        margin_right="0.5em",
     )
 
 
@@ -198,7 +199,8 @@ def messages() -> rx.Component:
         ),
         width="50em",
         flex="1",
-        margin="1em",
+        margin_y="0.5em",
+        margin_left="0.5em",
         padding="0.5em",
     )
 
@@ -244,7 +246,9 @@ def actions() -> rx.Component:
         backdrop_blur="lg",
         background_color=rx.color("mauve", 2),
         padding="0.5em",
-        margin="1em",
+        margin_bottom="1em",
+        margin_left="0.5em",
+        margin_top="0.5em",
     )
 
 
@@ -271,8 +275,10 @@ def header():
             ),
             justify_content="space-between",
         ),
-        margin="1em",
-        padding="1em",
+        margin_top="1em",
+        margin_left="0.5em",
+        margin_bottom="0.5em",
+        padding="0.5em",
         width="50em",
     )
 
