@@ -424,6 +424,57 @@ class State(rx.State):
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
+    def process_docs(self, role: str, files: list[rx.UploadFile]):
+        docs = []
+        documents = []
+
+        for file in files:
+            name = file.filename
+            extension = name.split(".")[-1]
+
+            doc = Document(name=name, role=role, timestamp=datetime.now())
+            document_id = Database.get_instance().db.store_document(doc)
+            doc.id = document_id
+            docs.append(doc)
+
+            dir = os.getenv("STORAGE_MOUNT")
+            path = f"{dir}/{document_id}"
+            with open(path, "wb") as f:
+                content = file.file.read()
+                f.write(content)
+
+            match extension:
+                case "pdf":
+                    loader = PyPDFLoader(path)
+                case "docx" | "doc":
+                    loader = UnstructuredWordDocumentLoader(path, mode="elements")
+                case _:
+                    raise ValueError("Unsupported file format")
+
+            for chunk in loader.load():
+                page = chunk.metadata.get("page_number") or int(
+                    chunk.metadata.get("page") + 1
+                )
+                documents.append(
+                    DocEntry(
+                        page_content=chunk.page_content,
+                        metadata={
+                            **chunk.metadata,
+                            **({"page_id": page} if page else {}),
+                            "role": role,
+                            "source": name,
+                            "document_id": document_id,
+                        },
+                    )
+                )
+
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        chunks = text_splitter.split_documents(documents)
+
+        Vector.get_instance().db.add_documents(chunks)
+
+        return docs
+
     @rx.event
     def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
@@ -431,52 +482,9 @@ class State(rx.State):
 
         try:
             role = self.upload_role if self.upload_role else self.preferred_username
-            dir = os.getenv("STORAGE_MOUNT")
-
-            documents = []
-            for file in files:
-                name = file.filename
-                extension = name.split(".")[-1]
-
-                doc = Document(name=name, role=role, timestamp=datetime.now())
-                document_id = Database.get_instance().db.store_document(doc)
-                doc.id = document_id
+            docs = self.process_docs(role, files)
+            for doc in docs:
                 self.cached_documents[doc.id] = doc
-
-                path = f"{dir}/{document_id}"
-                with open(path, "wb") as f:
-                    content = file.file.read()
-                    f.write(content)
-
-                match extension:
-                    case "pdf":
-                        loader = PyPDFLoader(path)
-                    case "docx" | "doc":
-                        loader = UnstructuredWordDocumentLoader(path, mode="elements")
-                    case _:
-                        raise ValueError("Unsupported file format")
-
-                for chunk in loader.load():
-                    page = chunk.metadata.get("page_number") or int(
-                        chunk.metadata.get("page") + 1
-                    )
-                    documents.append(
-                        DocEntry(
-                            page_content=chunk.page_content,
-                            metadata={
-                                **chunk.metadata,
-                                **({"page_id": page} if page else {}),
-                                "role": role,
-                                "source": name,
-                                "document_id": document_id,
-                            },
-                        )
-                    )
-
-            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-            chunks = text_splitter.split_documents(documents)
-
-            Vector.get_instance().db.add_documents(chunks)
 
         except Exception as e:
             print(e)
