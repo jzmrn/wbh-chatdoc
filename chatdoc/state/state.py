@@ -53,21 +53,13 @@ class State(rx.State):
     languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
 
     uploading: bool = False
-
     selected_chat: int | None = None
-
     upload_role: str | None = None
-
-    # The name of the new chat.
     new_chat_name: str = ""
 
     cached_chats: dict[int, Chat] | None = None
     cached_documents: dict[int, Document] | None = None
 
-    # The current question.
-    question: str
-
-    # Whether we are processing the question.
     processing: bool = False
 
     access_token: str = ""
@@ -80,9 +72,9 @@ class State(rx.State):
 
     def redirect_sso(self) -> rx.Component:
         self.flow = Sso.get_instance().app.initiate_auth_code_flow(
-            scopes=[], redirect_uri=f"{self.router.page.host}/callback"
+            scopes=[],
+            redirect_uri=f"{self.router.page.host}/callback",
         )
-        print(self.flow)
         return rx.redirect(self.flow["auth_uri"])
 
     def require_auth(self):
