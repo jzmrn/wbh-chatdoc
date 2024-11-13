@@ -26,13 +26,13 @@
     "empty": "Error generating response. Please try again later."
   },
   "docs": {
-    "header": "Docs",
+    "all": "All Docs",
     "upload": "Upload",
     "title": "Documents",
     "subheader": "Upload documents",
     "description": "Drag and drop files here or click to select files",
     "processing": "Your files are uploaded and processed...",
-    "empty": "No documents uploaded yet...",
+    "empty": "No documents assigned to this role...",
     "roles": "Your roles: ",
     "confirm": "Delete document?",
     "delete": "Delete"

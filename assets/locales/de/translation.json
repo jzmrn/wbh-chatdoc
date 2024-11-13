@@ -26,13 +26,13 @@
     "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut."
   },
   "docs": {
-    "header": "Docs",
+    "all": "Alle Dokumente",
     "subheader": "Dokumente hochladen",
     "title": "Dokumente",
     "upload": "Hochladen",
     "description": "Dateien hier ablegen oder klicken um Dateien auszuwählen",
     "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
-    "empty": "Keine Dokumente hochgeladen...",
+    "empty": "Dieser Rolle sind keine Dokumente zugewiesen...",
     "roles": "Deine Rollen: ",
     "confirm": "Dokument löschen?",
     "delete": "Löschen"
