@@ -40,13 +40,8 @@ def upload_form():
                     rx.hstack(
                         rx.select(
                             State.user_roles,
-                            default_value="Privat",
-                            on_change=lambda role: rx.cond(
-                                role == "Privat",
-                                State.set_upload_role(State.preferred_username),
-                                State.set_upload_role(role),
-                            ),
-                            disabled=State.uploading,
+                            default_value=State.strings["docs.private"],
+                            on_change=State.set_upload_role,
                         ),
                         rx.button(
                             State.strings["docs.upload"],
@@ -150,7 +145,9 @@ def docs_list() -> rx.Component:
         rx.center(
             rx.flex(
                 rx.hstack(
-                    rx.heading(State.strings["docs.title"]),
+                    rx.heading(
+                        f"{State.strings["docs.title"]} ({State.documents_count})"
+                    ),
                     rx.hstack(
                         rx.select(
                             State.filters,

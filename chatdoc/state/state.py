@@ -98,16 +98,17 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
+        private = self.strings["docs.private"]
         # TODO: do not hardcode user roles
         match self.user_name:
             case "Jan Zimmermann":
-                return ["Privat", "Support", "chatdoc"]
+                return [private, "Support", "chatdoc"]
             case "Max Krischker":
-                return ["Privat", "Management", "chatdoc"]
+                return [private, "Management", "chatdoc"]
             case "Daniel Keiss":
-                return ["Privat", "Management", "Support"]
+                return [private, "Management", "Support"]
             case _:
-                return ["Privat", "Public"]
+                return [private, "Public"]
 
     def logout(self):
         self.token = {}
@@ -432,6 +433,10 @@ class State(rx.State):
     def documents_empty(self) -> bool:
         return len(self.filtered_documents) == 0
 
+    @rx.var(cache=True)
+    def documents_count(self):
+        return len(self.filtered_documents)
+
     def set_upload_role(self, data: str):
         self.upload_role = data
 
@@ -498,8 +503,10 @@ class State(rx.State):
         self.uploading = True
         yield
 
+        role = self.upload_role if self.upload_role else self.preferred_username
+        role = role if role != self.strings["docs.private"] else self.preferred_username
+
         try:
-            role = self.upload_role if self.upload_role else self.preferred_username
             docs = self.process_docs(role, files)
             for doc in docs:
                 self.cached_documents[doc.id] = doc

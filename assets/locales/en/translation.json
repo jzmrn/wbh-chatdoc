@@ -35,7 +35,8 @@
     "empty": "No documents assigned to this role...",
     "roles": "Your roles: ",
     "confirm": "Delete document?",
-    "delete": "Delete"
+    "delete": "Delete",
+    "private": "Private"
   },
   "error": {
     "upload": "Upload failed. Please try again later.",

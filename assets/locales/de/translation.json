@@ -35,7 +35,8 @@
     "empty": "Dieser Rolle sind keine Dokumente zugewiesen...",
     "roles": "Deine Rollen: ",
     "confirm": "Dokument löschen?",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "private": "Privat"
   },
   "error": {
     "upload": "Upload fehlgeschlagen. Bitte versuchen Sie es später erneut.",
