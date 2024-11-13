@@ -12,6 +12,7 @@
     "cancel": "Cancel"
   },
   "chat": {
+    "new": "Start the conversation with your first question 💬",
     "today": "Today",
     "header": "Chat",
     "input": "Ask a question...",

@@ -177,14 +177,18 @@ def messages() -> rx.Component:
     return rx.card(
         rx.center(
             rx.flex(
-                rx.scroll_area(
-                    rx.center(
-                        rx.foreach(State.current_chat.messages, message),
-                        direction="column",
-                        align_self="center",
+                rx.cond(
+                    State.empty_messages,
+                    rx.center(rx.text(State.strings["chat.new"]), width="100%"),
+                    rx.scroll_area(
+                        rx.center(
+                            rx.foreach(State.current_chat.messages, message),
+                            direction="column",
+                            align_self="center",
+                        ),
+                        type="always",
+                        scrollbars="vertical",
                     ),
-                    type="always",
-                    scrollbars="vertical",
                 ),
                 width="48em",
                 height="100%",

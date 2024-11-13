@@ -185,6 +185,10 @@ class State(rx.State):
 
         return self.cached_chats[self.selected_chat]
 
+    @rx.var(cache=True)
+    def empty_messages(self) -> bool:
+        return len(self.current_chat.messages) == 0
+
     def _ensure_chats(self):
         if not self.cached_chats:
             chats = Database.get_instance().db.get_chats_by_userid(
