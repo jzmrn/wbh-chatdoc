@@ -74,7 +74,8 @@ def sidebar() -> rx.Component:
         bg=rx.color("accent", 3),
         width="16em",
         padding="0.5em",
-        margin="1em",
+        margin_y="1em",
+        margin_right="0.5em",
     )
 
 
@@ -148,28 +149,27 @@ def message(qa: QA) -> rx.Component:
             **message_style,
             id=rx.cond(qa == State.current_chat.messages[-1], "latest", "any"),
         ),
-        width="100%",
+        width="46em",
     )
 
 
-def display_ref(docx: Chunk) -> rx.Component:
+def display_ref(chunk: Chunk) -> rx.Component:
+    m = chunk.metadata
     return rx.hstack(
         rx.hover_card.root(
             rx.hover_card.trigger(
                 rx.link(
                     rx.cond(
-                        docx.metadata.contains("page"),
-                        f"{docx.metadata["source"]} ({State.strings["chat.page"]}: {docx.metadata['page']})",
-                        docx.metadata["source"],
+                        m.contains("page_id"),
+                        f"{m["source"]} ({State.strings["chat.page"]}: {m['page_id']})",
+                        m["source"],
                     ),
                     color_scheme="blue",
                     underline="always",
-                    on_click=lambda: State.download_file(
-                        docx.metadata["document_id"], docx.metadata["source"]
-                    ),
+                    on_click=lambda: State.download_file(m["document_id"], m["source"]),
                 ),
             ),
-            rx.hover_card.content(rx.text(docx.page_content)),
+            rx.hover_card.content(rx.text(chunk.page_content)),
         ),
     )
 
@@ -178,23 +178,29 @@ def messages() -> rx.Component:
     return rx.card(
         rx.center(
             rx.flex(
-                rx.scroll_area(
-                    rx.center(
-                        rx.foreach(State.current_chat.messages, message),
-                        direction="column",
-                        align_self="center",
+                rx.cond(
+                    State.empty_messages,
+                    rx.center(rx.text(State.strings["chat.new"]), width="100%"),
+                    rx.scroll_area(
+                        rx.center(
+                            rx.foreach(State.current_chat.messages, message),
+                            direction="column",
+                            align_self="center",
+                        ),
+                        type="always",
+                        scrollbars="vertical",
                     ),
-                    type="always",
-                    scrollbars="vertical",
                 ),
-                width="40em",
+                width="48em",
                 height="100%",
             ),
             overflow="hidden",
             height="100%",
         ),
+        width="50em",
         flex="1",
-        margin="1em",
+        margin_y="0.5em",
+        margin_left="0.5em",
         padding="0.5em",
     )
 
@@ -236,10 +242,13 @@ def actions() -> rx.Component:
             width="100%",
         ),
         backdrop_filter="auto",
+        width="50em",
         backdrop_blur="lg",
         background_color=rx.color("mauve", 2),
         padding="0.5em",
-        margin="1em",
+        margin_bottom="1em",
+        margin_left="0.5em",
+        margin_top="0.5em",
     )
 
 
@@ -266,8 +275,11 @@ def header():
             ),
             justify_content="space-between",
         ),
-        margin="1em",
-        padding="1em",
+        margin_top="1em",
+        margin_left="0.5em",
+        margin_bottom="0.5em",
+        padding="0.5em",
+        width="50em",
     )
 
 

@@ -51,24 +51,16 @@ class State(rx.State):
         )
     )
     languages: list[str] = [OPTION_GERMAN, OPTION_ENGLISH]
+    filter: str | None = None
 
-    creating_chat: bool = False
     uploading: bool = False
-
     selected_chat: int | None = None
-
     upload_role: str | None = None
-
-    # The name of the new chat.
     new_chat_name: str = ""
 
     cached_chats: dict[int, Chat] | None = None
     cached_documents: dict[int, Document] | None = None
 
-    # The current question.
-    question: str
-
-    # Whether we are processing the question.
     processing: bool = False
 
     access_token: str = ""
@@ -81,9 +73,9 @@ class State(rx.State):
 
     def redirect_sso(self) -> rx.Component:
         self.flow = Sso.get_instance().app.initiate_auth_code_flow(
-            scopes=[], redirect_uri=f"{self.router.page.host}/callback"
+            scopes=[],
+            redirect_uri=f"{self.router.page.host}/callback",
         )
-        print(self.flow)
         return rx.redirect(self.flow["auth_uri"])
 
     def require_auth(self):
@@ -106,16 +98,17 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
+        private = self.strings["docs.private"]
         # TODO: do not hardcode user roles
         match self.user_name:
             case "Jan Zimmermann":
-                return ["Privat", "Support", "chatdoc"]
+                return [private, "Support", "chatdoc"]
             case "Max Krischker":
-                return ["Privat", "Management", "chatdoc"]
+                return [private, "Management", "chatdoc"]
             case "Daniel Keiss":
-                return ["Privat", "Management", "Support"]
+                return [private, "Management", "Support"]
             case _:
-                return ["Privat", "Public"]
+                return [private, "Public"]
 
     def logout(self):
         self.token = {}
@@ -194,6 +187,10 @@ class State(rx.State):
 
         return self.cached_chats[self.selected_chat]
 
+    @rx.var(cache=True)
+    def empty_messages(self) -> bool:
+        return len(self.current_chat.messages) == 0
+
     def _ensure_chats(self):
         if not self.cached_chats:
             chats = Database.get_instance().db.get_chats_by_userid(
@@ -242,13 +239,14 @@ class State(rx.State):
         if self.new_chat_name == "":
             return rx.toast.error(self.strings["chat.error"], position="bottom-center")
 
-        if len(self.cached_chats.keys()) > 10:
-            return rx.toast.warning(
-                self.strings["chat.multiple"], position="bottom-center"
-            )
+        if len(self.cached_chats.keys()) > 99:
+            categories = self.chats.keys()
+            if len(categories) > 0:
+                category = categories[-1]
+                chat = self.chats[category][0]
 
-        self.creating_chat = True
-        yield
+                Database.get_instance().db.delete_chat(chat.id)
+                del self.cached_chats[chat.id]
 
         chat = chat = Chat(
             name=self.new_chat_name,
@@ -260,7 +258,6 @@ class State(rx.State):
 
         self.cached_chats[chat.id] = chat
         self.selected_chat = chat.id
-        self.creating_chat = False
 
     def delete_chat(self):
         id = self.current_chat.id
@@ -392,6 +389,25 @@ class State(rx.State):
     # Upload #
     ##########
 
+    @rx.var(cache=True)
+    def filters(self) -> list[str]:
+        return [self.strings["docs.all"], *self.user_roles]
+
+    def set_filter(self, role: str):
+        self.filter = role
+
+    @rx.var(cache=True)
+    def filtered_documents(self) -> list[Document]:
+        if self.preferred_username is None:
+            return []
+
+        self._ensure_docs()
+        if not self.filter or self.filter == self.strings["docs.all"]:
+            return list(self.cached_documents.values())
+
+        role = self.preferred_username if self.filter == "Privat" else self.filter
+        return [doc for doc in self.cached_documents.values() if doc.role == role]
+
     def refresh_docs(self):
         docs = Database.get_instance().db.get_documents_by_roles(
             [*self.user_roles, self.preferred_username]
@@ -403,17 +419,23 @@ class State(rx.State):
         if self.preferred_username is None:
             return []
 
+        self._ensure_docs()
+        return list(self.cached_documents.values())
+
+    def _ensure_docs(self):
         if self.cached_documents is None:
             docs = Database.get_instance().db.get_documents_by_roles(
                 [*self.user_roles, self.preferred_username]
             )
             self.cached_documents = {doc.id: doc for doc in docs}
 
-        return list(self.cached_documents.values())
-
     @rx.var(cache=True)
     def documents_empty(self) -> bool:
-        return len(self.documents) == 0
+        return len(self.filtered_documents) == 0
+
+    @rx.var(cache=True)
+    def documents_count(self):
+        return len(self.filtered_documents)
 
     def set_upload_role(self, data: str):
         self.upload_role = data
@@ -425,55 +447,69 @@ class State(rx.State):
         # TODO: Upgrade pinecone plan to support filtering for deletes
         # self._vectordb.delete(filter={"metadata.document_id": document_id})
 
+    def process_docs(self, role: str, files: list[rx.UploadFile]):
+        docs = []
+        documents = []
+
+        for file in files:
+            name = file.filename
+            extension = name.split(".")[-1]
+
+            doc = Document(name=name, role=role, timestamp=datetime.now())
+            document_id = Database.get_instance().db.store_document(doc)
+            doc.id = document_id
+            docs.append(doc)
+
+            dir = os.getenv("STORAGE_MOUNT")
+            path = f"{dir}/{document_id}"
+            with open(path, "wb") as f:
+                content = file.file.read()
+                f.write(content)
+
+            match extension:
+                case "pdf":
+                    loader = PyPDFLoader(path)
+                case "docx" | "doc":
+                    loader = UnstructuredWordDocumentLoader(path, mode="elements")
+                case _:
+                    raise ValueError("Unsupported file format")
+
+            for chunk in loader.load():
+                page = chunk.metadata.get("page_number") or int(
+                    chunk.metadata.get("page") + 1
+                )
+                documents.append(
+                    DocEntry(
+                        page_content=chunk.page_content,
+                        metadata={
+                            **chunk.metadata,
+                            **({"page_id": page} if page else {}),
+                            "role": role,
+                            "source": name,
+                            "document_id": document_id,
+                        },
+                    )
+                )
+
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        chunks = text_splitter.split_documents(documents)
+
+        Vector.get_instance().db.add_documents(chunks)
+
+        return docs
+
     @rx.event
     def handle_upload(self, files: list[rx.UploadFile]):
         self.uploading = True
         yield
 
+        role = self.upload_role if self.upload_role else self.preferred_username
+        role = role if role != self.strings["docs.private"] else self.preferred_username
+
         try:
-            role = self.upload_role if self.upload_role else self.preferred_username
-            dir = os.getenv("STORAGE_MOUNT")
-
-            documents = []
-            for file in files:
-                name = file.filename
-                extension = name.split(".")[-1]
-
-                doc = Document(name=name, role=role, timestamp=datetime.now())
-                document_id = Database.get_instance().db.store_document(doc)
-                doc.id = document_id
+            docs = self.process_docs(role, files)
+            for doc in docs:
                 self.cached_documents[doc.id] = doc
-
-                path = f"{dir}/{document_id}"
-                with open(path, "wb") as f:
-                    content = file.file.read()
-                    f.write(content)
-
-                match extension:
-                    case "pdf":
-                        loader = PyPDFLoader(path)
-                    case "docx" | "doc":
-                        loader = UnstructuredWordDocumentLoader(path, mode="elements")
-                    case _:
-                        raise ValueError("Unsupported file format")
-
-                for chunk in loader.load():
-                    documents.append(
-                        DocEntry(
-                            page_content=chunk.page_content,
-                            metadata={
-                                **chunk.metadata,
-                                "role": role,
-                                "source": name,
-                                "document_id": document_id,
-                            },
-                        )
-                    )
-
-            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-            chunks = text_splitter.split_documents(documents)
-
-            Vector.get_instance().db.add_documents(chunks)
 
         except Exception as e:
             print(e)
@@ -485,15 +521,13 @@ class State(rx.State):
     def download_file(self, fid: int, filename: str):
         try:
             dir = os.getenv("STORAGE_MOUNT")
-            path = f"{dir}/{fid}"
+            path = f"{dir}/{int(float(fid))}"
             with open(path, "rb") as f:
                 data = f.read()
+            return rx.download(data=data, filename=filename)
 
-            return rx.download(
-                data=data,
-                filename=filename,
-            )
-        except Exception:
+        except Exception as e:
+            print(e)
             return rx.toast.error(
                 self.strings["error.download"], position="bottom-center"
             )

@@ -11,59 +11,54 @@ def upload_form():
     return rx.card(
         rx.heading(State.strings["docs.subheader"]),
         rx.form(
-            rx.vstack(
-                rx.cond(
-                    State.uploading,
-                    rx.box(
-                        rx.center(State.strings["docs.processing"]),
-                        rx.center(rx.spinner()),
-                        padding="1em",
-                        width="100%",
-                    ),
-                    rx.box(
-                        rx.upload(
-                            rx.text(
-                                State.strings["docs.description"],
-                                weight="bold",
-                            ),
-                            rx.foreach(rx.selected_files(UPLOAD_ID), rx.text),
-                            border="0",
-                            id=UPLOAD_ID,
-                            padding="3em",
-                            width="100%",
-                            accept={
-                                "application/pdf": [".pdf"],
-                                "application/msword": [".docx", ".doc"],
-                            },
-                            max_files=5,
-                            max_size=10 * 1024 * 1024,
+            rx.cond(
+                State.uploading,
+                rx.box(
+                    rx.center(State.strings["docs.processing"]),
+                    rx.center(rx.spinner()),
+                    padding="1em",
+                    width="100%",
+                ),
+                rx.box(
+                    rx.upload(
+                        rx.text(
+                            State.strings["docs.description"],
+                            weight="bold",
                         ),
-                        rx.hstack(
-                            rx.select(
-                                State.user_roles,
-                                default_value="Privat",
-                                on_change=lambda role: rx.cond(
-                                    role == "Privat",
-                                    State.set_upload_role(State.preferred_username),
-                                    State.set_upload_role(role),
-                                ),
-                                disabled=State.uploading,
-                            ),
-                            rx.button(
-                                State.strings["docs.upload"],
-                                on_click=State.handle_upload(
-                                    rx.upload_files(upload_id=UPLOAD_ID),
-                                ),
-                            ),
-                            float="right",
-                        ),
+                        rx.foreach(rx.selected_files(UPLOAD_ID), rx.text),
+                        border="0",
+                        id=UPLOAD_ID,
+                        padding="3em",
                         width="100%",
+                        accept={
+                            "application/pdf": [".pdf"],
+                            "application/msword": [".docx", ".doc"],
+                        },
+                        max_files=5,
+                        max_size=10 * 1024 * 1024,
                     ),
+                    rx.hstack(
+                        rx.select(
+                            State.user_roles,
+                            default_value=State.strings["docs.private"],
+                            on_change=State.set_upload_role,
+                        ),
+                        rx.button(
+                            State.strings["docs.upload"],
+                            on_click=State.handle_upload(
+                                rx.upload_files(upload_id=UPLOAD_ID),
+                            ),
+                        ),
+                        float="right",
+                    ),
+                    width="100%",
                 ),
             ),
         ),
         align_self="center",
         width="50em",
+        margin_top="1em",
+        margin_bottom="0.5em",
     )
 
 
@@ -83,16 +78,21 @@ def modal(id: any, name: any) -> rx.Component:
         rx.dialog.content(
             rx.dialog.title(State.strings["docs.confirm"]),
             rx.flex(
-                rx.center(name, font_style="oblique"),
+                rx.center(name, font_style="oblique", height="6em"),
                 rx.dialog.close(
                     rx.flex(
+                        rx.button(
+                            State.strings["menu.cancel"],
+                            background_color="gray",
+                        ),
                         rx.button(
                             State.strings["docs.delete"],
                             background_color="red",
                             on_click=lambda: State.delete_document(id),
                         ),
+                        spacing="2",
                         justify="end",
-                    )
+                    ),
                 ),
                 direction="column",
                 spacing="4",
@@ -145,27 +145,37 @@ def docs_list() -> rx.Component:
         rx.center(
             rx.flex(
                 rx.hstack(
-                    rx.heading(State.strings["docs.title"]),
-                    rx.button(
-                        rx.icon(tag="refresh-cw", size=16),
-                        on_click=State.refresh_docs,
+                    rx.heading(
+                        f"{State.strings["docs.title"]} ({State.documents_count})"
+                    ),
+                    rx.hstack(
+                        rx.select(
+                            State.filters,
+                            default_value=State.strings["docs.all"],
+                            on_change=State.set_filter,
+                        ),
+                        rx.button(
+                            rx.icon(tag="refresh-cw", size=16),
+                            on_click=State.refresh_docs,
+                        ),
                     ),
                     justify_content="space-between",
                     margin_bottom="1em",
                 ),
                 rx.cond(
                     State.documents_empty,
-                    rx.box(
+                    rx.center(
                         rx.center(State.strings["docs.empty"]),
                         rx.center(
                             State.strings["docs.roles"] + State.user_roles.join(", "),
                         ),
+                        direction="column",
                         margin_y="2em",
                         height="100%",
                     ),
                     rx.scroll_area(
                         rx.center(
-                            rx.foreach(State.documents, doc),
+                            rx.foreach(State.filtered_documents, doc),
                             direction="column",
                             align_self="center",
                             spacing="2",
@@ -183,7 +193,8 @@ def docs_list() -> rx.Component:
             height="100%",
         ),
         flex="1",
-        margin="1em",
+        margin_bottom="1em",
+        margin_top="0.5em",
         padding="0.5em",
         width="50em",
         align_self="center",

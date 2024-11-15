@@ -8,9 +8,11 @@
   "menu": {
     "chat": "Chat",
     "docs": "Docs",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "cancel": "Abbrechen"
   },
   "chat": {
+    "new": "Starte die Konversation mit deiner ersten Frage 💬",
     "today": "Heute",
     "header": "Chats",
     "input": "Stelle eine Frage...",
@@ -19,23 +21,22 @@
     "title": "Neuen Chat erstellen",
     "placeholder": "Name des Chats...",
     "page": "Seite",
-    "cancel": "Abbrechen",
     "error": "Der Name des Chats darf nicht leer sein.",
     "info": "Stellen Sie eine Frage mit maximal 1000 Zeichen.",
-    "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut.",
-    "multiple": "Bitte lösche einen Chat bevor du einen neuen erstellst."
+    "empty": "Fehler beim Generieren der Antwort. Bitte versuchen Sie es später erneut."
   },
   "docs": {
-    "header": "Docs",
+    "all": "Alle Dokumente",
     "subheader": "Dokumente hochladen",
     "title": "Dokumente",
     "upload": "Hochladen",
     "description": "Dateien hier ablegen oder klicken um Dateien auszuwählen",
     "processing": "Ihre Dateien werden hochgeladen und verarbeitet...",
-    "empty": "Keine Dokumente hochgeladen...",
+    "empty": "Dieser Rolle sind keine Dokumente zugewiesen...",
     "roles": "Deine Rollen: ",
     "confirm": "Dokument löschen?",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "private": "Privat"
   },
   "error": {
     "upload": "Upload fehlgeschlagen. Bitte versuchen Sie es später erneut.",

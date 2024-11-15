@@ -8,9 +8,11 @@
   "menu": {
     "chat": "Chat",
     "docs": "Docs",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "cancel": "Cancel"
   },
   "chat": {
+    "new": "Start the conversation with your first question 💬",
     "today": "Today",
     "header": "Chat",
     "input": "Ask a question...",
@@ -19,23 +21,22 @@
     "title": "Create a new Chat",
     "placeholder": "Chat name...",
     "page": "Page",
-    "cancel": "Cancel",
     "error": "Chat name cannot be empty.",
     "info": "Ask a question with a maximum of 1000 characters.",
-    "empty": "Error generating response. Please try again later.",
-    "multiple": "Please delete a chat before creating a new one."
+    "empty": "Error generating response. Please try again later."
   },
   "docs": {
-    "header": "Docs",
+    "all": "All Docs",
     "upload": "Upload",
     "title": "Documents",
     "subheader": "Upload documents",
     "description": "Drag and drop files here or click to select files",
     "processing": "Your files are uploaded and processed...",
-    "empty": "No documents uploaded yet...",
+    "empty": "No documents assigned to this role...",
     "roles": "Your roles: ",
     "confirm": "Delete document?",
-    "delete": "Delete"
+    "delete": "Delete",
+    "private": "Private"
   },
   "error": {
     "upload": "Upload failed. Please try again later.",
