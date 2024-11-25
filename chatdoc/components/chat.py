@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import reflex as rx
-import reflex_chakra as rc
 
 from chatdoc.state import QA, Chunk, State
 from chatdoc.state.models import Chat
@@ -208,34 +207,32 @@ def messages() -> rx.Component:
 def actions() -> rx.Component:
     return rx.card(
         rx.form(
-            rc.form_control(
-                rx.flex(
-                    rx.input(
-                        rx.input.slot(
-                            rx.tooltip(
-                                rx.icon("info", size=18),
-                                content=State.strings["chat.info"],
-                            )
-                        ),
-                        max_length=1000,
-                        placeholder=State.strings["chat.input"],
-                        id="question",
-                        flex="1",
+            rx.flex(
+                rx.input(
+                    rx.input.slot(
+                        rx.tooltip(
+                            rx.icon("info", size=18),
+                            content=State.strings["chat.info"],
+                        )
                     ),
-                    rx.button(
-                        rx.cond(
-                            State.processing,
-                            rx.spinner(),
-                            rx.text(State.strings["chat.send"]),
-                        ),
-                        type="submit",
-                    ),
-                    direction="row",
-                    align="stretch",
-                    align_items="center",
-                    spacing="2",
+                    max_length=1000,
+                    placeholder=State.strings["chat.input"],
+                    id="question",
+                    flex="1",
                 ),
-                is_disabled=State.processing,
+                rx.button(
+                    rx.cond(
+                        State.processing,
+                        rx.spinner(),
+                        rx.text(State.strings["chat.send"]),
+                    ),
+                    disabled=State.processing,
+                    type="submit",
+                ),
+                direction="row",
+                align="stretch",
+                align_items="center",
+                spacing="2",
             ),
             on_submit=State.process_question,
             reset_on_submit=True,
