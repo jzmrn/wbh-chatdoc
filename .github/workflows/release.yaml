@@ -55,8 +55,8 @@ jobs:
         push: true
         tags: |
           jzmrn/chatdoc-backend:${{ needs.release.outputs.version }}
-          jzmrn/chatdoc-frontend:${{ needs.release.outputs.major }}-latest
-          jzmrn/chatdoc-frontend:latest
+          jzmrn/chatdoc-backend:${{ needs.release.outputs.major }}-latest
+          jzmrn/chatdoc-backend:latest
 
   frontend:
     runs-on: ubuntu-latest
