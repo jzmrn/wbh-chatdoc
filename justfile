@@ -8,7 +8,7 @@ set dotenv-load
 # Install dependencies
 install:
     poetry install
-    # reflex init
+    reflex init
 
 # Run the app locally
 run:
