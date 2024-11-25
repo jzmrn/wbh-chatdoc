@@ -50,17 +50,22 @@
 #     redis-server --daemonize yes && \
 #     exec poetry run reflex run --env prod --backend-only
 
-FROM python:3.12
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1
 
-ENV POETRY_VIRTUALENVS_CREATE=false \
-  POETRY_CACHE_DIR='/var/cache/pypoetry' \
-  POETRY_HOME='/usr/local' \
+ENV POETRY_HOME="/opt/poetry" \
+  POETRY_VIRTUALENVS_CREATE=false \
+  POETRY_VIRTUALENVS_IN_PROJECT=false \
+  POETRY_NO_INTERACTION=1 \
   POETRY_VERSION=1.8.3
+
+ENV PATH="$PATH:$POETRY_HOME/bin"
 
 WORKDIR /app
 COPY . .
+
+RUN apt-get update && apt-get install --no-install-recommends -y curl
 
 # Install app requirements and reflex in the container
 RUN curl -sSL https://install.python-poetry.org | python3 -

@@ -1,7 +1,6 @@
 services:
   backend:
-    build:
-      dockerfile: Dockerfile
+    image: chatdoc-backend:dev
     ports:
      - 8000:8000
     depends_on:
@@ -10,8 +9,7 @@ services:
       - .env
 
   frontend:
-    build:
-      dockerfile: Dockerfile.web
+    image: chatdoc-frontend:dev
     ports:
       - 3000:80
     depends_on:
