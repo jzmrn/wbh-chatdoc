@@ -69,7 +69,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y curl
 
 # Install app requirements and reflex in the container
 RUN curl -sSL https://install.python-poetry.org | python3 -
-COPY poetry.lock pyproject.toml /app/
 RUN poetry install --only=main --no-root
 
 ENTRYPOINT ["poetry", "run", "reflex", "run", "--env", "prod", "--backend-only", "--loglevel", "debug" ]
