@@ -139,4 +139,3 @@ venv/
 wheels/
 .DS_Store
 .ruff_cache/
-poetry.lock
