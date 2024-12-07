@@ -276,113 +276,128 @@ class State(rx.State):
     #######
 
     def process_question(self, form_data: dict[str, str]):
-        # Get the question from the form
-        question = form_data["question"]
+        try:
+            # Get the question from the form
+            question = form_data["question"]
 
-        # Check if the question is empty
-        if question == "":
-            return
+            # Check if the question is empty
+            if question == "":
+                return
 
-        # Clear the input and start the processing.
-        self.processing = True
-        yield
-
-        # Add the question to the list of questions.
-        qa = QA(question=question, answer="", context=[], timestamp=datetime.now())
-        self.current_chat.messages.append(qa)
-        yield rx.scroll_to("latest")
-
-        # Build the messages.
-        messages = []
-        for qa in self.current_chat.messages:
-            messages.append(("user", qa.question))
-            messages.append(("ai", qa.answer))
-
-        # Remove the last mock answer.
-        messages = messages[:-1]
-
-        llm = ChatOpenAI(
-            model_name="gpt-3.5-turbo",
-            temperature=0,
-            api_key=os.environ["OPENAI_API_KEY"],
-        )
-
-        # Contextualize question
-        contextualize_q_system_prompt = (
-            "Given a chat history and the latest user question "
-            "which might reference context in the chat history, "
-            "formulate a standalone question which can be understood "
-            "without the chat history. Do NOT answer the question, just "
-            "reformulate it if needed and otherwise return it as is."
-        )
-        contextualize_q_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", contextualize_q_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        history_aware_retriever = create_history_aware_retriever(
-            llm,
-            Vector.get_instance().db.as_retriever(
-                search_kwargs={
-                    "k": 2,
-                    "filter": {"role": {"$in": self.user_roles}},
-                },
-            ),
-            contextualize_q_prompt,
-        )
-
-        # Answer question
-        qa_system_prompt = (
-            "You are an assistant called chatdoc for question-answering tasks."
-            "Use the following pieces of retrieved context to answer the "
-            "question. If you don't know the answer, just say that you "
-            "don't know. Use three sentences maximum and keep the answer "
-            "concise."
-            "Context: {context}"
-        )
-        qa_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", qa_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        # Below we use create_stuff_documents_chain to feed all retrieved context
-        # into the LLM. Note that we can also use StuffDocumentsChain and other
-        # instances of BaseCombineDocumentsChain.
-        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
-        chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
-
-        for item in chain.stream({"input": question, "chat_history": messages}):
-            answer = item.get("answer", "")
-            self.cached_chats[self.selected_chat].messages[-1].answer += answer
+            # Clear the input and start the processing.
+            self.processing = True
             yield
 
-            context = item.get("context")
-            if not context:
-                continue
+            # Add the question to the list of questions.
+            qa = QA(question=question, answer="", context=[], timestamp=datetime.now())
+            self.current_chat.messages.append(qa)
+            yield rx.scroll_to("latest")
 
-            self.cached_chats[self.selected_chat].messages[-1].context = [
-                Chunk(
-                    id=d.id,
-                    page_content=d.page_content,
-                    metadata={
-                        **d.metadata,
-                        **({"page": int(m.get("page", 0)) + 1} if "page" in m else {}),
-                    }
-                    if isinstance(m := d.metadata, dict)
-                    else {},
-                )
-                for d in context
-            ]
-            yield
+            # Build the messages.
+            messages = []
+            for qa in self.current_chat.messages:
+                messages.append(("user", qa.question))
+                messages.append(("ai", qa.answer))
 
-        Database.get_instance().db.update_chat(self.cached_chats[self.selected_chat])
-        self.processing = False
+            # Remove the last mock answer.
+            messages = messages[:-1]
+
+            llm = ChatOpenAI(
+                model_name="gpt-3.5-turbo",
+                temperature=0,
+                api_key=os.environ["OPENAI_API_KEY"],
+            )
+
+            # Contextualize question
+            contextualize_q_system_prompt = (
+                "Given a chat history and the latest user question "
+                "which might reference context in the chat history, "
+                "formulate a standalone question which can be understood "
+                "without the chat history. Do NOT answer the question, just "
+                "reformulate it if needed and otherwise return it as is."
+            )
+            contextualize_q_prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", contextualize_q_system_prompt),
+                    MessagesPlaceholder("chat_history"),
+                    ("human", "{input}"),
+                ]
+            )
+
+            history_aware_retriever = create_history_aware_retriever(
+                llm,
+                Vector.get_instance().db.as_retriever(
+                    search_kwargs={
+                        "k": 2,
+                        "filter": {"role": {"$in": self.user_roles}},
+                    },
+                ),
+                contextualize_q_prompt,
+            )
+
+            # Answer question
+            qa_system_prompt = (
+                "You are an assistant called chatdoc for question-answering tasks."
+                "Use the following pieces of retrieved context to answer the "
+                "question. If you don't know the answer, just say that you "
+                "don't know. Use three sentences maximum and keep the answer "
+                "concise."
+                "Context: {context}"
+            )
+            qa_prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", qa_system_prompt),
+                    MessagesPlaceholder("chat_history"),
+                    ("human", "{input}"),
+                ]
+            )
+
+            # Below we use create_stuff_documents_chain to feed all retrieved context
+            # into the LLM. Note that we can also use StuffDocumentsChain and other
+            # instances of BaseCombineDocumentsChain.
+            question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+            chain = create_retrieval_chain(
+                history_aware_retriever, question_answer_chain
+            )
+
+            for item in chain.stream({"input": question, "chat_history": messages}):
+                answer = item.get("answer", "")
+                self.cached_chats[self.selected_chat].messages[-1].answer += answer
+                yield
+
+                context = item.get("context")
+                if not context:
+                    continue
+
+                self.cached_chats[self.selected_chat].messages[-1].context = [
+                    Chunk(
+                        id=d.id,
+                        page_content=d.page_content,
+                        metadata={
+                            **d.metadata,
+                            **(
+                                {"page": int(m.get("page", 0)) + 1}
+                                if "page" in m
+                                else {}
+                            ),
+                        }
+                        if isinstance(m := d.metadata, dict)
+                        else {},
+                    )
+                    for d in context
+                ]
+                yield
+
+            Database.get_instance().db.update_chat(
+                self.cached_chats[self.selected_chat]
+            )
+
+        except Exception as e:
+            print(e)
+
+        finally:
+            self.processing = False
+
         return rx.scroll_to("latest")
 
     ##########
@@ -476,7 +491,7 @@ class State(rx.State):
 
             for chunk in loader.load():
                 page = chunk.metadata.get("page_number") or int(
-                    chunk.metadata.get("page") + 1
+                    chunk.metadata.get("page", 0) + 1
                 )
                 documents.append(
                     DocEntry(
