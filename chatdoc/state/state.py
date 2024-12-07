@@ -439,10 +439,7 @@ class State(rx.State):
 
     def _ensure_docs(self):
         if self.cached_documents is None:
-            docs = Database.get_instance().db.get_documents_by_roles(
-                [*self.user_roles, self.preferred_username]
-            )
-            self.cached_documents = {doc.id: doc for doc in docs}
+            self.refresh_docs()
 
     @rx.var(cache=True)
     def documents_empty(self) -> bool:
