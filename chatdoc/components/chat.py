@@ -132,7 +132,7 @@ def message(qa: QA) -> rx.Component:
                             width="2em",
                             margin="1em",
                         ),
-                        rx.markdown(State.strings["chat.empty"]),
+                        rx.markdown(State.strings["chat.empty"], font_style="oblique"),
                     ),
                     rx.vstack(
                         rx.markdown(qa.answer),
