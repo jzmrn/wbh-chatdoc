@@ -90,10 +90,12 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_name(self) -> str:
+        # TODO: handle none
         return self.token.get("name")
 
     @rx.var(cache=True)
     def preferred_username(self) -> str:
+        # TODO: handle none
         return self.token.get("preferred_username")
 
     @rx.var(cache=True)
@@ -275,13 +277,13 @@ class State(rx.State):
     # LLM #
     #######
 
-    def process_question(self, form_data: dict[str, str]):
+    def process_question(self, form_data: dict[str, Any]):
         try:
             # Get the question from the form
-            question = form_data["question"]
+            question = form_data.get("question", "")
 
-            # Check if the question is empty
-            if question == "":
+            # Input validation
+            if not isinstance(question, str) or question == "":
                 return
 
             # Clear the input and start the processing.
