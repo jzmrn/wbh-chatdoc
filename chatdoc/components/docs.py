@@ -45,6 +45,7 @@ def upload_form():
                         ),
                         rx.button(
                             State.strings["docs.upload"],
+                            type="submit",
                             on_click=State.handle_upload(
                                 rx.upload_files(upload_id=UPLOAD_ID),
                             ),
@@ -54,6 +55,7 @@ def upload_form():
                     width="100%",
                 ),
             ),
+            on_submit=lambda: State.set_uploading(True),
         ),
         align_self="center",
         width="50em",

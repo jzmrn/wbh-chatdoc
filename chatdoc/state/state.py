@@ -500,9 +500,6 @@ class State(rx.State):
 
     @rx.event
     def handle_upload(self, files: list[rx.UploadFile]):
-        self.uploading = True
-        yield
-
         role = self.upload_role if self.upload_role else self.preferred_username
         role = role if role != self.strings["docs.private"] else self.preferred_username
 
@@ -518,6 +515,11 @@ class State(rx.State):
         finally:
             self.uploading = False
 
+    @rx.event
+    def set_uploading(self, value: bool):
+        self.uploading = value
+
+    @rx.event
     def download_file(self, fid: int, filename: str):
         try:
             dir = os.getenv("STORAGE_MOUNT")
