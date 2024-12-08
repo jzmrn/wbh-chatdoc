@@ -466,7 +466,7 @@ class State(rx.State):
         documents = []
 
         for file in files:
-            name = file.filename
+            name = file.filename.split("/")[-1]
             extension = name.split(".")[-1]
 
             doc = Document(name=name, role=role, timestamp=datetime.now())

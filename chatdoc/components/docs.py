@@ -60,6 +60,7 @@ def upload_form():
         align_self="center",
         width="50em",
         margin_top="1em",
+        padding="1em",
         margin_bottom="0.5em",
     )
 
@@ -138,7 +139,7 @@ def doc(doc: Document) -> rx.Component:
             width="100%",
             justify="between",
         ),
-        width="48em",
+        width="47em",
     )
 
 
@@ -176,10 +177,9 @@ def docs_list() -> rx.Component:
                         height="100%",
                     ),
                     rx.scroll_area(
-                        rx.center(
+                        rx.flex(
                             rx.foreach(State.filtered_documents, doc),
                             direction="column",
-                            align_self="center",
                             spacing="2",
                         ),
                         type="always",
@@ -197,7 +197,7 @@ def docs_list() -> rx.Component:
         flex="1",
         margin_bottom="1em",
         margin_top="0.5em",
-        padding="0.5em",
+        padding="1em",
         width="50em",
         align_self="center",
     )
