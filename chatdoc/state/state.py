@@ -371,7 +371,7 @@ class State(rx.State):
                 if not context:
                     continue
 
-                self.cached_chats[self.selected_chat].messages[-1].context = [
+                chunks = [
                     Chunk(
                         id=d.id,
                         page_content=d.page_content,
@@ -388,6 +388,20 @@ class State(rx.State):
                     )
                     for d in context
                 ]
+
+                current_context = {
+                    (c.metadata.get("source"), c.metadata.get("page")): c
+                    for c in self.cached_chats[self.selected_chat].messages[-1].context
+                }
+
+                for chunk in chunks:
+                    key = (chunk.metadata.get("source"), chunk.metadata.get("page"))
+                    if key not in current_context:
+                        current_context[key] = chunk
+
+                self.cached_chats[self.selected_chat].messages[-1].context = list(
+                    current_context.values()
+                )
                 yield
 
             Database.get_instance().db.update_chat(
