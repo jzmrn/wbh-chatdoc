@@ -159,8 +159,8 @@ def display_ref(chunk: Chunk) -> rx.Component:
             rx.hover_card.trigger(
                 rx.link(
                     rx.cond(
-                        m.contains("page_id"),
-                        f"{m["source"]} ({State.strings["chat.page"]}: {m['page_id']})",
+                        m.contains("page"),
+                        f"{m["source"]} ({State.strings["chat.page"]}: {m['page']})",
                         m["source"],
                     ),
                     color_scheme="blue",
