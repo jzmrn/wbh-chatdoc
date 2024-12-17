@@ -100,7 +100,7 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
-        private = self.strings["docs.private"]
+        private = self.preferred_username
         # TODO: do not hardcode user roles
         match self.user_name:
             case "Jan Zimmermann":
