@@ -100,17 +100,24 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def user_roles(self) -> list[str]:
-        private = self.preferred_username
         # TODO: do not hardcode user roles
         match self.user_name:
             case "Jan Zimmermann":
-                return [private, "Support", "chatdoc"]
+                return ["Support", "chatdoc"]
             case "Max Krischker":
-                return [private, "Management", "chatdoc"]
+                return ["Management", "chatdoc"]
             case "Daniel Keiss":
-                return [private, "Management", "Support"]
+                return ["Management", "Support"]
             case _:
-                return [private, "Public"]
+                return ["Public"]
+
+    @rx.var(cache=True)
+    def user_roles_ui(self) -> list[str]:
+        return [self.strings["docs.private"], *self.user_roles]
+
+    @rx.var(cache=True)
+    def user_roles_backend(self) -> list[str]:
+        return [self.preferred_username, *self.user_roles]
 
     def logout(self):
         self.token = {}
@@ -331,7 +338,7 @@ class State(rx.State):
                 Vector.get_instance().db.as_retriever(
                     search_kwargs={
                         "k": 2,
-                        "filter": {"role": {"$in": self.user_roles}},
+                        "filter": {"role": {"$in": self.user_roles_backend}},
                     },
                 ),
                 contextualize_q_prompt,
@@ -422,7 +429,7 @@ class State(rx.State):
 
     @rx.var(cache=True)
     def filters(self) -> list[str]:
-        return [self.strings["docs.all"], *self.user_roles]
+        return [self.strings["docs.all"], *self.user_roles_ui]
 
     def set_filter(self, role: str):
         self.filter = role
@@ -436,7 +443,11 @@ class State(rx.State):
         if not self.filter or self.filter == self.strings["docs.all"]:
             return list(self.cached_documents.values())
 
-        role = self.preferred_username if self.filter == "Privat" else self.filter
+        role = (
+            self.preferred_username
+            if self.filter == self.strings["docs.private"]
+            else self.filter
+        )
         return [doc for doc in self.cached_documents.values() if doc.role == role]
 
     def refresh_docs(self):

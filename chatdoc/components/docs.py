@@ -39,7 +39,7 @@ def upload_form():
                     ),
                     rx.hstack(
                         rx.select(
-                            State.user_roles,
+                            State.user_roles_ui,
                             default_value=State.strings["docs.private"],
                             on_change=State.set_upload_role,
                         ),
