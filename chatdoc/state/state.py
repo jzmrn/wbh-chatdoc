@@ -526,6 +526,10 @@ class State(rx.State):
 
         return docs
 
+    @rx.var
+    def now(self) -> str:
+        return datetime.now().strftime("%d.%m.%Y")
+
     @rx.event
     def handle_upload(self, files: list[rx.UploadFile]):
         role = self.upload_role if self.upload_role else self.preferred_username

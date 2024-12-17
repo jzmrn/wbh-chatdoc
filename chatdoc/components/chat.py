@@ -41,7 +41,7 @@ def sidebar() -> rx.Component:
                             rx.flex(
                                 rx.heading(
                                     rx.cond(
-                                        chat == datetime.now().strftime("%d.%m.%Y"),
+                                        chat == State.now,
                                         State.strings["chat.today"],
                                         chat,
                                     ),
